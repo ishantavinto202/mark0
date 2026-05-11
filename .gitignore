@@ -40,7 +40,7 @@ yarn-error.*
 
 app-example
 
-
+/ios
 # Android
 android/app/build/
 android/build/
