@@ -55,6 +55,19 @@ export const SPAWN = {
   maxHorizontalStep: 210,
   /** Soft minimum so adjacent platforms don't fully overlap horizontally. */
   minHorizontalStep: 24,
+  /**
+   * Blue-platform difficulty ramp. Each blue locks its moveSpeed at spawn so
+   * already-on-screen platforms stay predictable; only newly spawned ones get
+   * faster. Multiplier is linear in score from 1.0 to `blueSpeedMaxMultiplier`
+   * over [0, `blueSpeedRampScore`] and held flat past the cap.
+   *
+   * At the cap: peak linear velocity = 1.15 rad/s × 2.2 × 56 px ≈ 142 px/s,
+   * which is comfortably below the player's 440 px/s run cap and below the
+   * per-frame travel that would risk tunneling against the 5 px EDGE_GRAB
+   * tolerance in gameTick.ts.
+   */
+  blueSpeedMaxMultiplier: 2.2,
+  blueSpeedRampScore: 6000,
 } as const;
 
 export const COLORS = {
@@ -71,8 +84,12 @@ export const COLORS = {
   hudBg: 'rgba(12, 18, 28, 0.72)',
 };
 
+// Distribution: green stays dominant; brown bumped from a rare hazard
+// (~1-in-7) up to an occasional one (~1-in-5). Combined with the
+// `brownCooldownRows` floor in SPAWN, minimum spacing between browns is
+// unchanged (≥4 platforms apart) — only the average density rises.
 export const PLATFORM_WEIGHTS: Record<PlatformKind, number> = {
-  green: 0.62,
-  brown: 0.14,
+  green: 0.56,
+  brown: 0.20,
   blue: 0.24,
 };

@@ -41,6 +41,19 @@ function platformCenterX(p: PlatformModel): number {
 }
 
 /**
+ * Score-driven multiplier applied to blue platforms' `moveSpeed` at spawn.
+ * Linear from 1.0 at score 0 up to `SPAWN.blueSpeedMaxMultiplier` at
+ * `SPAWN.blueSpeedRampScore`, then held flat. Locking in at spawn (rather
+ * than scaling per tick) keeps each platform's velocity predictable for
+ * the player and preserves the spawner's reachability guarantees, which
+ * depend on `moveRange` and frame-by-frame stability of `moveSpeed`.
+ */
+function blueSpeedMultiplier(score: number): number {
+  const t = clamp(score / SPAWN.blueSpeedRampScore, 0, 1);
+  return 1 + t * (SPAWN.blueSpeedMaxMultiplier - 1);
+}
+
+/**
  * Spawn a single platform one step above the previous spawn. Vertical step is
  * always within the player's max reachable jump height (with a safety margin),
  * horizontal step from the previous platform is always within practical
@@ -119,6 +132,9 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
   const centerX = randRange(rng, minCenter, maxCenter);
   const x = clamp(centerX - pw / 2, PLATFORM.edgeMargin, w - PLATFORM.edgeMargin - pw);
 
+  const blueSpeed =
+    kind === 'blue' ? PLATFORM.blueMoveSpeed * blueSpeedMultiplier(g.score) : 0;
+
   g.platforms.push({
     id: nextId(g),
     y,
@@ -127,7 +143,7 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
     kind,
     baseX: x,
     moveRange: kind === 'blue' ? PLATFORM.blueMoveRange : 0,
-    moveSpeed: kind === 'blue' ? PLATFORM.blueMoveSpeed : 0,
+    moveSpeed: blueSpeed,
     movePhase: randRange(rng, 0, Math.PI * 2),
     broken: false,
     breakTimer: 0,

@@ -4,11 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type Props = {
   score: number;
   highScore: number;
-  gyroActive: boolean;
   onPause: () => void;
 };
 
-export function GameHUD({ score, highScore, gyroActive, onPause }: Props) {
+export function GameHUD({ score, highScore, onPause }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -27,7 +26,7 @@ export function GameHUD({ score, highScore, gyroActive, onPause }: Props) {
         </Pressable>
       </View>
       <Text style={[styles.hint, { marginLeft: insets.left + 12 }]}>
-        {gyroActive ? 'Tilt to move · drag to fine-tune' : 'Drag to move'}
+        Hold the on-screen buttons to move
       </Text>
     </View>
   );

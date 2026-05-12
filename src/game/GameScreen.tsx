@@ -1,5 +1,6 @@
 import { GameCanvas } from '@/game/components/GameCanvas';
 import { GameHUD } from '@/game/components/GameHUD';
+import { TouchControls } from '@/game/components/TouchControls';
 import { useGameControls } from '@/game/controls/useGameControls';
 import { useGameLoop } from '@/game/hooks/useGameLoop';
 import { loadHighScore, saveHighScore } from '@/game/storage/highScore';
@@ -22,13 +23,15 @@ export function GameScreen() {
     'ready' | 'playing' | 'paused' | 'gameover'
   >('ready');
   const [highScore, setHighScore] = useState(0);
-  const [gyroActive, setGyroActive] = useState(false);
   const savedGameOver = useRef(false);
 
-  const { getInput, panHandlers } = useGameControls(
-    dims.w,
-    uiPhase === 'playing' || uiPhase === 'ready',
-  );
+  const {
+    getInput,
+    onLeftDown,
+    onLeftUp,
+    onRightDown,
+    onRightUp,
+  } = useGameControls(uiPhase === 'playing' || uiPhase === 'ready');
 
   useEffect(() => {
     void loadHighScore().then(setHighScore);
@@ -38,13 +41,12 @@ export function GameScreen() {
     setFrame((n) => n + 1);
     const g = gameRef.current;
     if (!g) return;
-    setGyroActive(getInput().gyroActive);
     if (g.phase === 'gameover' && !savedGameOver.current) {
       savedGameOver.current = true;
       void saveHighScore(g.score).then(() => loadHighScore().then(setHighScore));
     }
     setUiPhase((prev) => (g.phase !== prev ? g.phase : prev));
-  }, [getInput]);
+  }, []);
 
   useGameLoop({
     gameRef,
@@ -97,15 +99,20 @@ export function GameScreen() {
   const g = gameRef.current;
 
   return (
-    <View style={styles.root} onLayout={onLayout} {...panHandlers}>
+    <View style={styles.root} onLayout={onLayout}>
         {g && (
           <>
             <GameCanvas game={g} />
             <GameHUD
               score={g.score}
               highScore={highScore}
-              gyroActive={gyroActive}
               onPause={pause}
+            />
+            <TouchControls
+              onLeftDown={onLeftDown}
+              onLeftUp={onLeftUp}
+              onRightDown={onRightDown}
+              onRightUp={onRightUp}
             />
           </>
         )}

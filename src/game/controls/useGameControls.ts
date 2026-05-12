@@ -1,101 +1,69 @@
-import { DeviceMotion } from 'expo-sensors';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { PanResponder, Platform, type GestureResponderEvent } from 'react-native';
-
-const TILT_SMOOTH = 0.22;
-const MAX_TILT = 0.5;
-
-function clamp(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, n));
-}
+import { useCallback, useEffect, useRef } from 'react';
 
 export type ControlInputRef = {
   horizontal: number;
-  gyroActive: boolean;
 };
 
 /**
- * Gyro tilt (DeviceMotion rotation gamma) on iOS + touch position fallback.
- * Read `getInput()` each frame from the game loop for lowest latency.
+ * Movement input driven by an on-screen touch overlay.
+ *
+ * The hook owns the press state for the left/right buttons and exposes:
+ *   - `getInput()`           — frame-rate read accessor for the game loop.
+ *   - `onLeftDown`/`onLeftUp`/`onRightDown`/`onRightUp` — handlers the overlay
+ *     wires to its `Pressable`'s `onPressIn`/`onPressOut` props.
+ *
+ * No keyboard, gyro, or pan-gesture input — buttons only — so behavior is
+ * identical on touch (iOS/Android, simulators) and mouse (desktop web). The
+ * RN `Pressable` events map to both pointer/touch and mouse-down/-up on web.
+ *
+ * When `enabled` flips false (pause / gameover) any held press is cleared
+ * immediately so a stranded "down" can't drift the player after the game
+ * stops accepting input. Releases are always honored, even while disabled,
+ * so toggling state back on starts cleanly from a zero baseline.
  */
-export function useGameControls(width: number, enabled: boolean): {
+export function useGameControls(enabled: boolean): {
   getInput: () => ControlInputRef;
-  panHandlers: ReturnType<typeof PanResponder.create>['panHandlers'];
+  onLeftDown: () => void;
+  onLeftUp: () => void;
+  onRightDown: () => void;
+  onRightUp: () => void;
 } {
-  const smoothedGyro = useRef(0);
-  const touchTilt = useRef(0);
-  const gyroActive = useRef(false);
-  const widthRef = useRef(width);
+  const leftDown = useRef(false);
+  const rightDown = useRef(false);
+  const enabledRef = useRef(enabled);
 
   useEffect(() => {
-    widthRef.current = width;
-  }, [width]);
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    let sub: { remove: () => void } | undefined;
-
-    const start = async (): Promise<void> => {
-      if (Platform.OS !== 'ios') {
-        gyroActive.current = false;
-        return;
-      }
-      const avail = await DeviceMotion.isAvailableAsync();
-      if (!avail) {
-        gyroActive.current = false;
-        return;
-      }
-      DeviceMotion.setUpdateInterval(16);
-      sub = DeviceMotion.addListener((evt) => {
-        const g = evt.rotation;
-        if (g == null) return;
-        const raw = clamp((g.gamma ?? 0) / MAX_TILT, -1, 1);
-        smoothedGyro.current += (raw - smoothedGyro.current) * TILT_SMOOTH;
-        gyroActive.current = true;
-      });
-    };
-
-    void start();
-
-    return () => {
-      sub?.remove();
-    };
+    enabledRef.current = enabled;
+    if (!enabled) {
+      leftDown.current = false;
+      rightDown.current = false;
+    }
   }, [enabled]);
 
-  const getInput = useCallback((): ControlInputRef => {
-    const g = gyroActive.current ? smoothedGyro.current : 0;
-    const t = touchTilt.current;
-    const h = gyroActive.current
-      ? clamp(g * 0.7 + t * 0.3, -1, 1)
-      : t;
-    return { horizontal: h, gyroActive: gyroActive.current };
+  const onLeftDown = useCallback((): void => {
+    if (!enabledRef.current) return;
+    leftDown.current = true;
   }, []);
 
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => enabled,
-        onMoveShouldSetPanResponder: () => enabled,
-        onPanResponderGrant: (e: GestureResponderEvent) => {
-          const w = widthRef.current || 1;
-          const x = e.nativeEvent.locationX;
-          touchTilt.current = clamp((x / w) * 2 - 1, -1, 1);
-        },
-        onPanResponderMove: (e: GestureResponderEvent) => {
-          const w = widthRef.current || 1;
-          const x = e.nativeEvent.locationX;
-          touchTilt.current = clamp((x / w) * 2 - 1, -1, 1);
-        },
-        onPanResponderRelease: () => {
-          touchTilt.current = 0;
-        },
-        onPanResponderTerminate: () => {
-          touchTilt.current = 0;
-        },
-      }),
-    [enabled],
-  );
+  const onLeftUp = useCallback((): void => {
+    leftDown.current = false;
+  }, []);
 
-  return { getInput, panHandlers: pan.panHandlers };
+  const onRightDown = useCallback((): void => {
+    if (!enabledRef.current) return;
+    rightDown.current = true;
+  }, []);
+
+  const onRightUp = useCallback((): void => {
+    rightDown.current = false;
+  }, []);
+
+  const getInput = useCallback((): ControlInputRef => {
+    if (!enabledRef.current) return { horizontal: 0 };
+    const left = leftDown.current ? -1 : 0;
+    const right = rightDown.current ? 1 : 0;
+    return { horizontal: left + right };
+  }, []);
+
+  return { getInput, onLeftDown, onLeftUp, onRightDown, onRightUp };
 }
