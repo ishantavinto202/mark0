@@ -26,7 +26,12 @@ export const CAMERA = {
 export const PLAYER_SIZE = { w: 42, h: 54 } as const;
 
 export const PLATFORM = {
-  height: 18,
+  // 26 px matches the native vertical of the platform sprites in
+  // `assets/sprites/platform_*.png` so they render 1:1 on the Y axis. The
+  // spawner places platforms by top-y, so taller blocks don't change jump
+  // gaps or reachability — only the visible thickness below the landing
+  // surface. See gameTick.ts: collision uses p.y (top) for landing.
+  height: 26,
   minWidth: 76,
   maxWidth: 112,
   /** Side margin from screen edges when placing platforms. */
