@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import type { LayoutChangeEvent } from 'react-native';
 import { GameCanvas } from '@/game/components/GameCanvas';
 import { GameHUD } from '@/game/components/GameHUD';
 import { useGameControls } from '@/game/controls/useGameControls';
 import { useGameLoop } from '@/game/hooks/useGameLoop';
 import { loadHighScore, saveHighScore } from '@/game/storage/highScore';
-import { createInitialGame } from '@/game/world/initialWorld';
 import type { GameModel } from '@/game/types';
+import { createInitialGame } from '@/game/world/initialWorld';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { LayoutChangeEvent } from 'react-native';
+import {
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
 
 export function GameScreen() {
   const gameRef = useRef<GameModel | null>(null);

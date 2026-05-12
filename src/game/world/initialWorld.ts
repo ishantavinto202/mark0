@@ -1,4 +1,4 @@
-import { CAMERA, PLAYER_SIZE, PLATFORM } from '@/game/constants';
+import { CAMERA, PLATFORM, PLAYER_SIZE } from '@/game/constants';
 import { mulberry32 } from '@/game/math/rng';
 import { spawnPlatformRow } from '@/game/spawn/platformSpawner';
 import type { GameModel, PlatformModel } from '@/game/types';
@@ -72,7 +72,9 @@ export function createInitialGame(width: number, height: number): GameModel {
   };
 
   const rng = mulberry32(rngSeed);
-  for (let i = 0; i < 16; i += 1) {
+  // One platform per call now → spawn enough to cover the visible area plus
+  // a comfortable buffer above the camera.
+  for (let i = 0; i < 32; i += 1) {
     spawnPlatformRow(g, rng);
   }
 

@@ -1,12 +1,17 @@
 import { CAMERA, PHYSICS } from '@/game/constants';
-import { mulberry32 } from '@/game/math/rng';
 import { rectBottom, rectsOverlap, type Rect } from '@/game/math/collision';
+import { mulberry32 } from '@/game/math/rng';
 import { spawnObstacleIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
 import type { ControlInput, GameModel, PlatformModel } from '@/game/types';
 
-const SPAWN_AHEAD = 320;
+const SPAWN_AHEAD = 480;
 const PRUNE_BELOW = 520;
-const EPS = 2;
+/**
+ * Horizontal landing forgiveness — if the player's hitbox grazes the platform
+ * within this many pixels of its edge while falling, snap them on top. Matches
+ * the Doodle-Jump-style "corner grab" feel.
+ */
+const EDGE_GRAB = 5;
 
 export function getPlatformWorldX(p: PlatformModel): number {
   if (p.kind === 'blue' && !p.broken) {
@@ -21,9 +26,9 @@ function clamp(v: number, lo: number, hi: number): number {
 
 function wrapPlayer(g: GameModel): void {
   const { player, width } = g;
-  if (player.x + player.w < -EPS) {
+  if (player.x + player.w < -2) {
     player.x = width;
-  } else if (player.x > width + EPS) {
+  } else if (player.x > width + 2) {
     player.x = -player.w;
   }
 }
@@ -68,6 +73,9 @@ export function tickGame(
   }
 
   g.player.vy += PHYSICS.gravity * dt;
+  // Clamp downward speed so the player can't tunnel through thin platforms in
+  // a single frame on dropped-frame or low-fps situations.
+  if (g.player.vy > PHYSICS.maxFallSpeed) g.player.vy = PHYSICS.maxFallSpeed;
   g.player.y += g.player.vy * dt;
   g.player.x += g.player.vx * dt;
   wrapPlayer(g);
@@ -94,14 +102,20 @@ export function tickGame(
       w: p.width,
       h: p.height,
     };
+    // Forgive a few pixels at each side — if the player's hitbox just touches
+    // the platform edge while coming down, treat it as a landing.
     const horiz =
-      playerRect.x + playerRect.w > platRect.x + EPS &&
-      playerRect.x < platRect.x + platRect.w - EPS;
+      playerRect.x + playerRect.w > platRect.x - EDGE_GRAB &&
+      playerRect.x < platRect.x + platRect.w + EDGE_GRAB;
 
     if (!horiz) continue;
 
+    // Only land while falling (vy >= 0) — Doodle-Jump style; you pass through
+    // platforms on the way up.
+    if (g.player.vy < 0) continue;
+
     if (p.kind === 'brown') {
-      if (g.player.vy >= -40 && prevFeet <= p.y + 8 && feet >= p.y - 4 && feet <= p.y + p.height + 6) {
+      if (prevFeet <= p.y + 10 && feet >= p.y - 4 && feet <= p.y + p.height + 8) {
         p.breaking = true;
         p.breakTimer = 0.09;
         p.shakePhase = 0.01;
@@ -110,7 +124,7 @@ export function tickGame(
       continue;
     }
 
-    if (g.player.vy >= -30 && prevFeet <= p.y + 6 && feet >= p.y - 3 && feet <= p.y + p.height + 4) {
+    if (prevFeet <= p.y + 8 && feet >= p.y - 4 && feet <= p.y + p.height + 6) {
       g.player.y = p.y - g.player.h;
       g.player.vy = PHYSICS.jumpVelocity;
       g.player.grounded = true;
@@ -132,11 +146,17 @@ export function tickGame(
     }
   }
 
+  // Camera ratchets UP only. In world coords "up" = decreasing Y, so we only
+  // lerp when the target is above the current cameraY. If the player is below
+  // the follow line (falling), the camera stays put — letting them visibly
+  // drop off the bottom of the screen and trigger gameover below.
   const camTarget = g.player.y - g.height * CAMERA.followRatio;
-  g.cameraY += (camTarget - g.cameraY) * clamp(CAMERA.lerp * (dt * 60), 0, 1);
+  if (camTarget < g.cameraY) {
+    g.cameraY += (camTarget - g.cameraY) * clamp(CAMERA.lerp * (dt * 60), 0, 1);
+  }
 
   let spawnSafety = 0;
-  while (spawnSafety++ < 48) {
+  while (spawnSafety++ < 96) {
     const minY = Math.min(...g.platforms.map((p) => p.y), g.nextSpawnY);
     if (minY <= g.cameraY - SPAWN_AHEAD) break;
     spawnPlatformRow(g, rng);
@@ -152,8 +172,13 @@ export function tickGame(
   );
   g.difficulty = 1 + Math.min(3, g.score / 2500);
 
-  if (g.player.y - g.cameraY > g.height + 100) {
+  // Game over once the player's top edge has fallen past the bottom of the
+  // visible screen with a small grace margin. With the camera no longer
+  // tracking downward, this fires reliably as soon as the player drops off.
+  const playerOffBottom = g.player.y - g.cameraY > g.height + 40;
+  if (playerOffBottom) {
     g.phase = 'gameover';
+    g.player.vy = 0;
     return;
   }
 }

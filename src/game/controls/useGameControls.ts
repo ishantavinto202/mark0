@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { DeviceMotion } from 'expo-sensors';
-import { Platform, PanResponder, type GestureResponderEvent } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { PanResponder, Platform, type GestureResponderEvent } from 'react-native';
 
 const TILT_SMOOTH = 0.22;
 const MAX_TILT = 0.5;

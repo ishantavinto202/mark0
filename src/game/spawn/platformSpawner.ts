@@ -1,15 +1,15 @@
 import { PLATFORM, PLATFORM_WEIGHTS, SPAWN } from '@/game/constants';
+import { JUMP_REACH } from '@/game/math/jumpReach';
 import { mulberry32, randInt, randRange } from '@/game/math/rng';
-import type { GameModel, PlatformKind } from '@/game/types';
+import type { GameModel, PlatformKind, PlatformModel } from '@/game/types';
 
 type Rng = ReturnType<typeof mulberry32>;
 
 function pickKind(
   rng: Rng,
   brownCooldownRows: number,
-  rowAlreadyHasBrown: boolean,
 ): PlatformKind {
-  if (brownCooldownRows > 0 || rowAlreadyHasBrown) {
+  if (brownCooldownRows > 0) {
     const r = rng();
     const g =
       PLATFORM_WEIGHTS.green /
@@ -31,48 +31,112 @@ function nextId(g: GameModel): string {
   return `p_${g.idCounter}`;
 }
 
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+/** Center X of a platform, accounting for blue's horizontal oscillation. */
+function platformCenterX(p: PlatformModel): number {
+  return p.baseX + p.width / 2;
+}
+
+/**
+ * Spawn a single platform one step above the previous spawn. Vertical step is
+ * always within the player's max reachable jump height (with a safety margin),
+ * horizontal step from the previous platform is always within practical
+ * sideways reach, and no two platforms share a Y row — this guarantees a clean,
+ * staggered upward path.
+ */
 export function spawnPlatformRow(g: GameModel, rng: Rng): void {
   const w = g.width;
-  const gap = randRange(rng, SPAWN.minJumpGap, SPAWN.maxJumpGap);
+
+  // Vertical step: clamp to physics-derived reachable peak (with margin) so it
+  // is impossible to author an unreachable gap.
+  const safeMaxGap = Math.min(
+    SPAWN.maxJumpGap,
+    Math.floor(JUMP_REACH.peakHeight * 0.72),
+  );
+  const safeMinGap = Math.min(SPAWN.minJumpGap, safeMaxGap - 1);
+  const gap = randRange(rng, safeMinGap, safeMaxGap);
   const y = g.nextSpawnY - gap;
-  const count = randInt(rng, 2, 3);
 
-  const slots: number[] = [];
-  for (let i = 0; i < count; i += 1) {
-    slots.push(randRange(rng, w * 0.06, w * 0.94 - PLATFORM.maxWidth));
-  }
-  slots.sort((a, b) => a - b);
+  const kind = pickKind(rng, g.brownCooldownRows);
+  const pw = randInt(rng, PLATFORM.minWidth, PLATFORM.maxWidth);
 
-  let rowHasBrown = false;
-  for (let i = 0; i < count; i += 1) {
-    const kind = pickKind(rng, g.brownCooldownRows, rowHasBrown);
-    if (kind === 'brown') {
-      rowHasBrown = true;
+  // Anchor from the previously spawned platform so we can guarantee horizontal
+  // reachability. Fall back to screen-center for the very first spawn.
+  const prev = g.platforms.length > 0 ? g.platforms[g.platforms.length - 1] : undefined;
+  const prevCenterX = prev ? platformCenterX(prev) : w / 2;
+
+  // For blue (moving) prev platforms, treat their worst-case position as the
+  // anchor — guarantees reachability even if blue has drifted to the far edge.
+  const prevWobble = prev && prev.kind === 'blue' ? prev.moveRange : 0;
+
+  // Max horizontal step gets a tiny bonus for closer vertical gaps (you have
+  // more airtime to redirect for tall jumps, less for short hops anyway).
+  const reach = Math.min(
+    SPAWN.maxHorizontalStep,
+    JUMP_REACH.practicalHorizontalReach,
+  );
+
+  // Allowed center-X window: within reach of prev center, clamped to screen.
+  const minCenterReachable = prevCenterX - (reach - prevWobble);
+  const maxCenterReachable = prevCenterX + (reach - prevWobble);
+
+  // Account for blue's own horizontal wobble so its baseX stays on-screen.
+  const wobbleSelf = kind === 'blue' ? PLATFORM.blueMoveRange : 0;
+  const minCenterScreen = PLATFORM.edgeMargin + pw / 2 + wobbleSelf;
+  const maxCenterScreen = w - PLATFORM.edgeMargin - pw / 2 - wobbleSelf;
+
+  let minCenter = Math.max(minCenterReachable, minCenterScreen);
+  let maxCenter = Math.min(maxCenterReachable, maxCenterScreen);
+
+  // Encourage a real horizontal stagger so adjacent platforms don't stack on
+  // the same X — but only when the screen has the room for it.
+  if (maxCenter - minCenter > SPAWN.minHorizontalStep * 2) {
+    // Carve out a deadzone around prev center, prefer the side with more room.
+    const leftRoom = prevCenterX - SPAWN.minHorizontalStep - minCenter;
+    const rightRoom = maxCenter - (prevCenterX + SPAWN.minHorizontalStep);
+    const goRight = rightRoom <= 0
+      ? false
+      : leftRoom <= 0
+        ? true
+        : rng() < rightRoom / (leftRoom + rightRoom);
+    if (goRight) {
+      minCenter = prevCenterX + SPAWN.minHorizontalStep;
+    } else {
+      maxCenter = prevCenterX - SPAWN.minHorizontalStep;
     }
-
-    const pw = randInt(rng, PLATFORM.minWidth, PLATFORM.maxWidth);
-    let x = slots[i] ?? w * 0.2;
-    x = Math.max(16, Math.min(x, w - pw - 16));
-
-    g.platforms.push({
-      id: nextId(g),
-      y,
-      width: pw,
-      height: PLATFORM.height,
-      kind,
-      baseX: x,
-      moveRange: kind === 'blue' ? PLATFORM.blueMoveRange : 0,
-      moveSpeed: kind === 'blue' ? PLATFORM.blueMoveSpeed : 0,
-      movePhase: randRange(rng, 0, Math.PI * 2),
-      broken: false,
-      breakTimer: 0,
-      breaking: false,
-      shakePhase: 0,
-    });
   }
 
-  g.lastSpawnWasBrown = rowHasBrown;
-  if (rowHasBrown) {
+  if (maxCenter < minCenter) {
+    // Window collapsed (very narrow screen) — fall back to the midpoint.
+    const mid = clamp((minCenterScreen + maxCenterScreen) / 2, minCenterScreen, maxCenterScreen);
+    minCenter = mid;
+    maxCenter = mid;
+  }
+
+  const centerX = randRange(rng, minCenter, maxCenter);
+  const x = clamp(centerX - pw / 2, PLATFORM.edgeMargin, w - PLATFORM.edgeMargin - pw);
+
+  g.platforms.push({
+    id: nextId(g),
+    y,
+    width: pw,
+    height: PLATFORM.height,
+    kind,
+    baseX: x,
+    moveRange: kind === 'blue' ? PLATFORM.blueMoveRange : 0,
+    moveSpeed: kind === 'blue' ? PLATFORM.blueMoveSpeed : 0,
+    movePhase: randRange(rng, 0, Math.PI * 2),
+    broken: false,
+    breakTimer: 0,
+    breaking: false,
+    shakePhase: 0,
+  });
+
+  g.lastSpawnWasBrown = kind === 'brown';
+  if (kind === 'brown') {
     g.brownCooldownRows = SPAWN.brownCooldownRows;
   } else if (g.brownCooldownRows > 0) {
     g.brownCooldownRows -= 1;
