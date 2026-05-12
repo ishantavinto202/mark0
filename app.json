@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mark0"
+      "bundleIdentifier": "com.anonymous.mark0",
+      "infoPlist": {
+        "NSMotionUsageDescription": "Tilt your iPhone to move the character left and right in the game."
+      }
     },
     "android": {
       "adaptiveIcon": {
