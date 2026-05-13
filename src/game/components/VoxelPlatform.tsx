@@ -1,11 +1,21 @@
+import { GREY_PLATFORM_WIDTH, TILE_SIZE } from '@/game/constants';
 import type { PlatformKind, PlatformModel } from '@/game/types';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 
-const PLATFORM_SPRITES: Record<PlatformKind, ImageSourcePropType> = {
-  green: require('@assets/sprites/platform_green.png'),
-  brown: require('@assets/sprites/platform_brown.png'),
-  blue: require('@assets/sprites/platform_blue.png'),
+/**
+ * Sprites for modular tile platforms (28 × 28 px each).
+ * These are repeated horizontally — never stretched.
+ */
+const TILE_SPRITES: Record<'blue' | 'darkBlue', ImageSourcePropType> = {
+  blue: require('@assets/sprites/BLUE.png'),
+  darkBlue: require('@assets/sprites/DARK BLUE.png'),
 };
+
+/**
+ * Sprite for the Grey platform — one complete image rendered at its natural
+ * 120 × 28 px. Never tiled, never stretched.
+ */
+const GREY_SPRITE: ImageSourcePropType = require('@assets/sprites/GREY.png');
 
 type Props = {
   platform: PlatformModel;
@@ -14,46 +24,76 @@ type Props = {
 };
 
 /**
- * Sprite-backed platform render.
+ * Renders platforms without any sprite scaling or stretching:
  *
- * Visuals are driven by `assets/sprites/platform_<kind>.png` (native size
- * 110 × 26). The sprite is stretched to the platform's gameplay `width` ×
- * `height`; with `PLATFORM.height = 26` and `width ∈ [76, 112]`, that means
- * 1:1 on the Y axis and ~0.69×–1.02× on the X axis — a modest, uniform
- * horizontal stretch that preserves the asset's silhouette.
+ * - Blue / Dark Blue: composed of repeated 28 × 28 px tiles placed side by
+ *   side. Width is always an exact multiple of TILE_SIZE so no partial tiles
+ *   ever appear.
  *
- * Gameplay-feedback effects are preserved from the procedural version:
- *   - `breaking` (brown right after the player touches it): horizontal shake
- *     and slight transparency.
+ * - Grey: rendered as one fixed 120 × 28 px sprite. Never tiled or scaled.
+ *
+ * Gameplay-feedback effects are preserved:
+ *   - `breaking` (grey after the player touches it): horizontal shake and
+ *     slight transparency.
  *   - `broken`: fully invisible so collision (which already excludes broken
  *     platforms) and visuals stay in sync.
- *
- * The previous procedural crack overlay was removed — `platform_brown.png`
- * is now the single source of truth for the brown look.
  */
 export function VoxelPlatform({ platform, screenX, screenY }: Props) {
   const { width, height, kind, breaking, broken, shakePhase } = platform;
   const shake = breaking && !broken ? Math.sin(shakePhase) * 3.5 : 0;
+  const opacity = broken ? 0 : breaking ? 0.85 : 1;
+
+  if (kind === 'grey') {
+    return (
+      <View
+        style={[
+          styles.abs,
+          {
+            left: screenX + shake,
+            top: screenY,
+            opacity,
+          },
+        ]}
+      >
+        <Image
+          source={GREY_SPRITE}
+          style={styles.greySprite}
+          resizeMode="cover"
+          fadeDuration={0}
+        />
+      </View>
+    );
+  }
+
+  // Blue and Dark Blue: tile the sprite horizontally using absolute positioning
+  // so each tile sits at exactly tileIndex * TILE_SIZE with zero gap.
+  // resizeMode="stretch" scales the native 38×36 sprite down to TILE_SIZE×TILE_SIZE
+  // so it matches the grey platform block height.
+  const tileCount = Math.round(width / TILE_SIZE);
+  const tileSprite = TILE_SPRITES[kind as 'blue' | 'darkBlue'];
 
   return (
     <View
       style={[
         styles.abs,
         {
-          width,
-          height,
           left: screenX + shake,
           top: screenY,
-          opacity: broken ? 0 : breaking ? 0.85 : 1,
+          width: tileCount * TILE_SIZE,
+          height: TILE_SIZE,
+          opacity,
         },
       ]}
     >
-      <Image
-        source={PLATFORM_SPRITES[kind]}
-        style={styles.fill}
-        resizeMode="stretch"
-        fadeDuration={0}
-      />
+      {Array.from({ length: tileCount }, (_, i) => (
+        <Image
+          key={i}
+          source={tileSprite}
+          style={[styles.tile, { left: i * TILE_SIZE }]}
+          resizeMode="stretch"
+          fadeDuration={0}
+        />
+      ))}
     </View>
   );
 }
@@ -62,8 +102,14 @@ const styles = StyleSheet.create({
   abs: {
     position: 'absolute',
   },
-  fill: {
-    width: '100%',
-    height: '100%',
+  tile: {
+    position: 'absolute',
+    top: 0,
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+  },
+  greySprite: {
+    width: GREY_PLATFORM_WIDTH,
+    height: 28,
   },
 });

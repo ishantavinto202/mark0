@@ -1,9 +1,9 @@
-import { CAMERA, PLATFORM, PLAYER_SIZE } from '@/game/constants';
+import { CAMERA, PLATFORM, PLAYER_SIZE, TILE_SIZE } from '@/game/constants';
 import { mulberry32 } from '@/game/math/rng';
 import { spawnPlatformRow } from '@/game/spawn/platformSpawner';
 import type { GameModel, PlatformModel } from '@/game/types';
 
-/** Start with brown disabled until a few rows exist. */
+/** Start with grey disabled until a few rows exist. */
 const SPAWN_INITIAL_BROWN_COOLDOWN = 4;
 
 let id = 0;
@@ -18,7 +18,7 @@ function starterPlatform(y: number, w: number, x: number): PlatformModel {
     y,
     width: w,
     height: PLATFORM.height,
-    kind: 'green',
+    kind: 'blue',
     baseX: x,
     moveRange: 0,
     moveSpeed: 0,
@@ -32,7 +32,10 @@ function starterPlatform(y: number, w: number, x: number): PlatformModel {
 
 export function createInitialGame(width: number, height: number): GameModel {
   id = 0;
-  const pw = Math.min(280, width - 48);
+  // Quantize to a whole number of 28 px tiles so the starter platform
+  // renders without partial tiles, just like procedurally spawned ones.
+  const rawPw = Math.min(280, width - 48);
+  const pw = Math.floor(rawPw / TILE_SIZE) * TILE_SIZE;
   const px = (width - pw) / 2;
   const startPlatformY = height * 0.62;
   const platforms: PlatformModel[] = [

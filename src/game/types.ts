@@ -1,5 +1,5 @@
 /** Platform kinds — extend with new types in spawn + tick + render. */
-export type PlatformKind = 'green' | 'brown' | 'blue';
+export type PlatformKind = 'blue' | 'grey' | 'darkBlue';
 
 export type PlatformModel = {
   id: string;
@@ -8,13 +8,13 @@ export type PlatformModel = {
   width: number;
   height: number;
   kind: PlatformKind;
-  /** For blue: horizontal anchor in world space. */
+  /** For darkBlue: horizontal anchor in world space. */
   baseX: number;
   moveRange: number;
   moveSpeed: number;
   movePhase: number;
   broken: boolean;
-  /** Seconds until collision disabled (brown). */
+  /** Seconds until collision disabled (grey). */
   breakTimer: number;
   breaking: boolean;
   shakePhase: number;

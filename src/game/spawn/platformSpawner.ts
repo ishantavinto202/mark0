@@ -1,4 +1,4 @@
-import { PLATFORM, PLATFORM_WEIGHTS, SPAWN } from '@/game/constants';
+import { GREY_PLATFORM_WIDTH, PLATFORM, PLATFORM_WEIGHTS, SPAWN, TILE_SIZE } from '@/game/constants';
 import { JUMP_REACH } from '@/game/math/jumpReach';
 import { mulberry32, randInt, randRange } from '@/game/math/rng';
 import type { GameModel, PlatformKind, PlatformModel } from '@/game/types';
@@ -12,18 +12,18 @@ function pickKind(
   if (brownCooldownRows > 0) {
     const r = rng();
     const g =
-      PLATFORM_WEIGHTS.green /
-      (PLATFORM_WEIGHTS.green + PLATFORM_WEIGHTS.blue);
-    return r < g ? 'green' : 'blue';
+      PLATFORM_WEIGHTS.blue /
+      (PLATFORM_WEIGHTS.blue + PLATFORM_WEIGHTS.darkBlue);
+    return r < g ? 'blue' : 'darkBlue';
   }
   const t = rng();
   let acc = 0;
-  const kinds: PlatformKind[] = ['green', 'brown', 'blue'];
+  const kinds: PlatformKind[] = ['blue', 'grey', 'darkBlue'];
   for (const k of kinds) {
     acc += PLATFORM_WEIGHTS[k];
     if (t <= acc) return k;
   }
-  return 'green';
+  return 'blue';
 }
 
 function nextId(g: GameModel): string {
@@ -35,22 +35,34 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
-/** Center X of a platform, accounting for blue's horizontal oscillation. */
+/** Center X of a platform, accounting for darkBlue's horizontal oscillation. */
 function platformCenterX(p: PlatformModel): number {
   return p.baseX + p.width / 2;
 }
 
 /**
- * Score-driven multiplier applied to blue platforms' `moveSpeed` at spawn.
- * Linear from 1.0 at score 0 up to `SPAWN.blueSpeedMaxMultiplier` at
- * `SPAWN.blueSpeedRampScore`, then held flat. Locking in at spawn (rather
+ * Score-driven multiplier applied to darkBlue platforms' `moveSpeed` at spawn.
+ * Linear from 1.0 at score 0 up to `SPAWN.darkBlueSpeedMaxMultiplier` at
+ * `SPAWN.darkBlueSpeedRampScore`, then held flat. Locking in at spawn (rather
  * than scaling per tick) keeps each platform's velocity predictable for
  * the player and preserves the spawner's reachability guarantees, which
  * depend on `moveRange` and frame-by-frame stability of `moveSpeed`.
  */
-function blueSpeedMultiplier(score: number): number {
-  const t = clamp(score / SPAWN.blueSpeedRampScore, 0, 1);
-  return 1 + t * (SPAWN.blueSpeedMaxMultiplier - 1);
+function darkBlueSpeedMultiplier(score: number): number {
+  const t = clamp(score / SPAWN.darkBlueSpeedRampScore, 0, 1);
+  return 1 + t * (SPAWN.darkBlueSpeedMaxMultiplier - 1);
+}
+
+/**
+ * Returns the pixel width for a newly spawned platform.
+ *
+ * - Grey: always GREY_PLATFORM_WIDTH (fixed single sprite, never tiled).
+ * - Blue / Dark Blue: random whole-tile count × TILE_SIZE (never fractional).
+ */
+function pickWidth(rng: Rng, kind: PlatformKind): number {
+  if (kind === 'grey') return GREY_PLATFORM_WIDTH;
+  const tiles = randInt(rng, PLATFORM.minTiles, PLATFORM.maxTiles);
+  return tiles * TILE_SIZE;
 }
 
 /**
@@ -74,16 +86,16 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
   const y = g.nextSpawnY - gap;
 
   const kind = pickKind(rng, g.brownCooldownRows);
-  const pw = randInt(rng, PLATFORM.minWidth, PLATFORM.maxWidth);
+  const pw = pickWidth(rng, kind);
 
   // Anchor from the previously spawned platform so we can guarantee horizontal
   // reachability. Fall back to screen-center for the very first spawn.
   const prev = g.platforms.length > 0 ? g.platforms[g.platforms.length - 1] : undefined;
   const prevCenterX = prev ? platformCenterX(prev) : w / 2;
 
-  // For blue (moving) prev platforms, treat their worst-case position as the
-  // anchor — guarantees reachability even if blue has drifted to the far edge.
-  const prevWobble = prev && prev.kind === 'blue' ? prev.moveRange : 0;
+  // For darkBlue (moving) prev platforms, treat their worst-case position as
+  // the anchor — guarantees reachability even if the platform has drifted.
+  const prevWobble = prev && prev.kind === 'darkBlue' ? prev.moveRange : 0;
 
   // Max horizontal step gets a tiny bonus for closer vertical gaps (you have
   // more airtime to redirect for tall jumps, less for short hops anyway).
@@ -96,8 +108,8 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
   const minCenterReachable = prevCenterX - (reach - prevWobble);
   const maxCenterReachable = prevCenterX + (reach - prevWobble);
 
-  // Account for blue's own horizontal wobble so its baseX stays on-screen.
-  const wobbleSelf = kind === 'blue' ? PLATFORM.blueMoveRange : 0;
+  // Account for darkBlue's own horizontal wobble so its baseX stays on-screen.
+  const wobbleSelf = kind === 'darkBlue' ? PLATFORM.darkBlueMoveRange : 0;
   const minCenterScreen = PLATFORM.edgeMargin + pw / 2 + wobbleSelf;
   const maxCenterScreen = w - PLATFORM.edgeMargin - pw / 2 - wobbleSelf;
 
@@ -132,8 +144,10 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
   const centerX = randRange(rng, minCenter, maxCenter);
   const x = clamp(centerX - pw / 2, PLATFORM.edgeMargin, w - PLATFORM.edgeMargin - pw);
 
-  const blueSpeed =
-    kind === 'blue' ? PLATFORM.blueMoveSpeed * blueSpeedMultiplier(g.score) : 0;
+  const darkBlueSpeed =
+    kind === 'darkBlue'
+      ? PLATFORM.darkBlueMoveSpeed * darkBlueSpeedMultiplier(g.score)
+      : 0;
 
   g.platforms.push({
     id: nextId(g),
@@ -142,8 +156,8 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
     height: PLATFORM.height,
     kind,
     baseX: x,
-    moveRange: kind === 'blue' ? PLATFORM.blueMoveRange : 0,
-    moveSpeed: blueSpeed,
+    moveRange: kind === 'darkBlue' ? PLATFORM.darkBlueMoveRange : 0,
+    moveSpeed: darkBlueSpeed,
     movePhase: randRange(rng, 0, Math.PI * 2),
     broken: false,
     breakTimer: 0,
@@ -151,8 +165,8 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
     shakePhase: 0,
   });
 
-  g.lastSpawnWasBrown = kind === 'brown';
-  if (kind === 'brown') {
+  g.lastSpawnWasBrown = kind === 'grey';
+  if (kind === 'grey') {
     g.brownCooldownRows = SPAWN.brownCooldownRows;
   } else if (g.brownCooldownRows > 0) {
     g.brownCooldownRows -= 1;
@@ -165,7 +179,7 @@ export function spawnObstacleIfNeeded(g: GameModel, rng: Rng): void {
   if (g.obstacles.length > 6) return;
   if (rng() > 0.01 * g.difficulty) return;
   const plat = g.platforms[g.platforms.length - 1];
-  if (!plat || plat.kind === 'brown') return;
+  if (!plat || plat.kind === 'grey') return;
   const ox = plat.baseX + plat.width / 2 - 16;
   const oy = plat.y - 44;
   g.obstacles.push({

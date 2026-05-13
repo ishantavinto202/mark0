@@ -1,5 +1,11 @@
 import type { PlatformKind } from '@/game/types';
 
+/** Pixel size of one repeatable tile used by Blue and Dark Blue platforms. */
+export const TILE_SIZE = 28;
+
+/** Fixed pixel width of the Grey platform sprite (rendered once, never tiled). */
+export const GREY_PLATFORM_WIDTH = 120;
+
 export const PHYSICS = {
   /**
    * Doodle-Jump-style floaty arc.
@@ -26,18 +32,20 @@ export const CAMERA = {
 export const PLAYER_SIZE = { w: 42, h: 54 } as const;
 
 export const PLATFORM = {
-  // 26 px matches the native vertical of the platform sprites in
-  // `assets/sprites/platform_*.png` so they render 1:1 on the Y axis. The
-  // spawner places platforms by top-y, so taller blocks don't change jump
-  // gaps or reachability — only the visible thickness below the landing
-  // surface. See gameTick.ts: collision uses p.y (top) for landing.
-  height: 26,
-  minWidth: 76,
-  maxWidth: 112,
+  // 28 px matches the native tile height of all platform sprites so they
+  // render 1:1 on the Y axis. The spawner places platforms by top-y, so
+  // taller blocks don't change jump gaps or reachability — only the visible
+  // thickness below the landing surface. See gameTick.ts: collision uses
+  // p.y (top) for landing.
+  height: 28,
+  /** Minimum number of 28 px tiles for modular (Blue / Dark Blue) platforms. */
+  minTiles: 2,
+  /** Maximum number of 28 px tiles for modular (Blue / Dark Blue) platforms. */
+  maxTiles: 4,
   /** Side margin from screen edges when placing platforms. */
   edgeMargin: 16,
-  blueMoveRange: 56,
-  blueMoveSpeed: 1.15,
+  darkBlueMoveRange: 56,
+  darkBlueMoveSpeed: 1.15,
 } as const;
 
 /**
@@ -47,7 +55,7 @@ export const PLATFORM = {
  * sideways reach during airtime.
  */
 export const SPAWN = {
-  /** After a brown, require this many spawn steps before another brown. */
+  /** After a grey, require this many spawn steps before another grey. */
   brownCooldownRows: 3,
   /** Min vertical step between consecutive platforms (small hop). */
   minJumpGap: 72,
@@ -61,40 +69,41 @@ export const SPAWN = {
   /** Soft minimum so adjacent platforms don't fully overlap horizontally. */
   minHorizontalStep: 24,
   /**
-   * Blue-platform difficulty ramp. Each blue locks its moveSpeed at spawn so
-   * already-on-screen platforms stay predictable; only newly spawned ones get
-   * faster. Multiplier is linear in score from 1.0 to `blueSpeedMaxMultiplier`
-   * over [0, `blueSpeedRampScore`] and held flat past the cap.
+   * Dark Blue platform difficulty ramp. Each dark blue locks its moveSpeed at
+   * spawn so already-on-screen platforms stay predictable; only newly spawned
+   * ones get faster. Multiplier is linear in score from 1.0 to
+   * `darkBlueSpeedMaxMultiplier` over [0, `darkBlueSpeedRampScore`] and held
+   * flat past the cap.
    *
    * At the cap: peak linear velocity = 1.15 rad/s × 2.2 × 56 px ≈ 142 px/s,
    * which is comfortably below the player's 440 px/s run cap and below the
    * per-frame travel that would risk tunneling against the 5 px EDGE_GRAB
    * tolerance in gameTick.ts.
    */
-  blueSpeedMaxMultiplier: 2.2,
-  blueSpeedRampScore: 6000,
+  darkBlueSpeedMaxMultiplier: 2.2,
+  darkBlueSpeedRampScore: 6000,
 } as const;
 
 export const COLORS = {
   skyTop: '#6ec8ff',
   skyBottom: '#b8e8ff',
-  greenTop: '#5ecf6a',
-  greenBottom: '#2d9a3d',
-  brownTop: '#a67c52',
-  brownBottom: '#5c3d22',
-  blueTop: '#4da3ff',
-  blueBottom: '#1e6fd4',
+  blueTop: '#5ecf6a',
+  blueBottom: '#2d9a3d',
+  greyTop: '#a67c52',
+  greyBottom: '#5c3d22',
+  darkBlueTop: '#4da3ff',
+  darkBlueBottom: '#1e6fd4',
   redTop: '#ff6b6b',
   redBottom: '#c0392b',
   hudBg: 'rgba(12, 18, 28, 0.72)',
 };
 
-// Distribution: green stays dominant; brown bumped from a rare hazard
+// Distribution: blue stays dominant; grey bumped from a rare hazard
 // (~1-in-7) up to an occasional one (~1-in-5). Combined with the
-// `brownCooldownRows` floor in SPAWN, minimum spacing between browns is
-// unchanged (≥4 platforms apart) — only the average density rises.
+// `brownCooldownRows` floor in SPAWN, minimum spacing between grey platforms
+// is unchanged (≥4 platforms apart) — only the average density rises.
 export const PLATFORM_WEIGHTS: Record<PlatformKind, number> = {
-  green: 0.56,
-  brown: 0.20,
-  blue: 0.24,
+  blue: 0.56,
+  grey: 0.20,
+  darkBlue: 0.24,
 };

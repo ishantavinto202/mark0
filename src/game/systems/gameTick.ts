@@ -14,7 +14,7 @@ const PRUNE_BELOW = 520;
 const EDGE_GRAB = 5;
 
 export function getPlatformWorldX(p: PlatformModel): number {
-  if (p.kind === 'blue' && !p.broken) {
+  if (p.kind === 'darkBlue' && !p.broken) {
     return p.baseX + Math.sin(p.movePhase) * p.moveRange;
   }
   return p.baseX;
@@ -35,7 +35,7 @@ function wrapPlayer(g: GameModel): void {
 
 function platformSolid(p: PlatformModel): boolean {
   if (p.broken) return false;
-  if (p.kind === 'brown' && p.breaking) return false;
+  if (p.kind === 'grey' && p.breaking) return false;
   return true;
 }
 
@@ -49,10 +49,10 @@ export function tickGame(
   const rng = mulberry32(g.rngSeed ^ Math.floor(g.score * 997));
 
   for (const p of g.platforms) {
-    if (p.kind === 'blue' && !p.broken) {
+    if (p.kind === 'darkBlue' && !p.broken) {
       p.movePhase += dt * p.moveSpeed;
     }
-    if (p.breaking || (p.kind === 'brown' && p.shakePhase > 0)) {
+    if (p.breaking || (p.kind === 'grey' && p.shakePhase > 0)) {
       p.shakePhase += dt * 48;
     }
     if (p.breaking && !p.broken) {
@@ -114,7 +114,7 @@ export function tickGame(
     // platforms on the way up.
     if (g.player.vy < 0) continue;
 
-    if (p.kind === 'brown') {
+    if (p.kind === 'grey') {
       if (prevFeet <= p.y + 10 && feet >= p.y - 4 && feet <= p.y + p.height + 8) {
         p.breaking = true;
         p.breakTimer = 0.09;
