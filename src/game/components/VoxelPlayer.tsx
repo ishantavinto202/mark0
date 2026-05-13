@@ -35,11 +35,20 @@ const ANIM_FPS = 10;
 const FRAME_MS = 1000 / ANIM_FPS;
 
 /**
- * Uniform scale: map the standard 322 px source-canvas height to PLAYER_SIZE.h.
- * This keeps the sprite at exactly the hitbox height for all non-outlier frames,
- * and is consistent across every frame so sizes never jump mid-animation.
+ * Visual multiplier: render the sprite larger than the hitbox for readability.
+ * Increasing this value grows the sprite upward and symmetrically to the sides
+ * while the collision box (PLAYER_SIZE) stays fixed. 2.0 = twice the hitbox
+ * height, giving ~86 × 108 display px which is readable on mobile without
+ * feeling oversized relative to the 28 px platform tiles.
  */
-const SCALE = PLAYER_SIZE.h / 322;
+const VISUAL_MULTIPLIER = 2.0;
+
+/**
+ * Uniform scale: map the standard 322 px source-canvas height to
+ * PLAYER_SIZE.h × VISUAL_MULTIPLIER. All 16 frames share this constant so
+ * sprite dimensions never change mid-animation.
+ */
+const SCALE = (PLAYER_SIZE.h * VISUAL_MULTIPLIER) / 322;
 
 /** Full texture dimensions in scaled (display) pixels — constant for all frames. */
 const TEX_W = Math.round(ATLAS.meta.size.w * SCALE);
