@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "mark0",
-    "slug": "mark0",
+    "name": "ConcertJump",
+    "slug": "ConcertJump",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mark0",
+    "scheme": "ConcertJump",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.mark0",
+      "bundleIdentifier": "com.concertjump.av",
       "infoPlist": {
         "NSMotionUsageDescription": "Tilt your iPhone to move the character left and right in the game."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -31,11 +31,9 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
-    "plugins": [
-      "expo-router"
-    ],
+    "plugins": ["./plugins/withFmtFix", "expo-router"],
     "experiments": {
       "typedRoutes": true
     }
