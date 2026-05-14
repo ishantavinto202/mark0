@@ -1,24 +1,24 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
-import { COLORS } from '@/game/constants';
 import { getPlatformWorldX } from '@/game/systems/gameTick';
 import type { GameModel } from '@/game/types';
 import { VoxelObstacle } from '@/game/components/VoxelObstacle';
 import { VoxelPlatform } from '@/game/components/VoxelPlatform';
 import { VoxelPlayer } from '@/game/components/VoxelPlayer';
+import { ScrollingBackground } from '@/game/components/ScrollingBackground';
 
 type Props = {
   game: GameModel;
 };
 
 export function GameCanvas({ game }: Props) {
-  const { cameraY, player, platforms, obstacles, height } = game;
+  const { cameraY, player, platforms, obstacles, width, height } = game;
 
   return (
     <View style={styles.root} pointerEvents="box-none">
-      <LinearGradient
-        colors={[COLORS.skyTop, COLORS.skyBottom]}
-        style={StyleSheet.absoluteFill}
+      <ScrollingBackground
+        cameraY={cameraY}
+        screenWidth={width}
+        screenHeight={height}
       />
       {platforms.map((p) => {
         const wx = getPlatformWorldX(p);
