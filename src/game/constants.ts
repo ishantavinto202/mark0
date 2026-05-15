@@ -54,10 +54,18 @@ export const PLATFORM = {
 export const SPAWN = {
   /** After a grey, require this many spawn steps before another grey. */
   brownCooldownRows: 3,
-  /** Min vertical step between consecutive platforms (small hop). */
-  minJumpGap: 72,
-  /** Max vertical step — roughly 67% of peak jump height for safety margin. */
-  maxJumpGap: 170,
+  /**
+   * Min vertical step between consecutive platforms.
+   * 64 px gives ~10 px clearance above the player's head (54 px hitbox) when
+   * standing on the platform below — tight but never visually buried.
+   */
+  minJumpGap: 64,
+  /**
+   * Max vertical step — ~45% of peak jump height (≈253 px) so even the
+   * widest gaps feel reachable and the screen stays comfortably populated.
+   * Formerly 170 (67%); reducing this is the primary lever for density.
+   */
+  maxJumpGap: 115,
   /**
    * Max horizontal distance (platform-center to platform-center) between
    * consecutive platforms. Player can comfortably cover this within airtime.

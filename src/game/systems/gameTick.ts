@@ -4,7 +4,10 @@ import { mulberry32 } from '@/game/math/rng';
 import { spawnObstacleIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
 import type { ControlInput, GameModel, PlatformModel } from '@/game/types';
 
-const SPAWN_AHEAD = 480;
+// Pre-generate platforms this many world-px above the camera. Increased from
+// 480 to match the higher platform density (smaller gaps → more platforms fit
+// in the same vertical window, so a larger buffer keeps the spawner ahead).
+const SPAWN_AHEAD = 560;
 const PRUNE_BELOW = 520;
 /**
  * Horizontal landing forgiveness — if the player's hitbox grazes the platform
