@@ -1,10 +1,7 @@
 import type { PlatformKind } from '@/game/types';
 
-/** Pixel size of one repeatable tile used by Blue and Dark Blue platforms. */
+/** Pixel size of one repeatable tile used by all platform types. */
 export const TILE_SIZE = 28;
-
-/** Fixed pixel width of the Grey platform sprite (rendered once, never tiled). */
-export const GREY_PLATFORM_WIDTH = 120;
 
 export const PHYSICS = {
   /**

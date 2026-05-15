@@ -1,4 +1,4 @@
-import { GREY_PLATFORM_WIDTH, PLATFORM, PLATFORM_WEIGHTS, SPAWN, TILE_SIZE } from '@/game/constants';
+import { PLATFORM, PLATFORM_WEIGHTS, SPAWN, TILE_SIZE } from '@/game/constants';
 import { JUMP_REACH } from '@/game/math/jumpReach';
 import { mulberry32, randInt, randRange } from '@/game/math/rng';
 import type { GameModel, PlatformKind, PlatformModel } from '@/game/types';
@@ -54,15 +54,39 @@ function darkBlueSpeedMultiplier(score: number): number {
 }
 
 /**
+ * Grey platform tile range, scaled smoothly by difficulty.
+ *
+ * Early game (difficulty ≈ 1): 4–6 tiles (112–168 px) — wide, forgiving.
+ * Mid game  (difficulty ≈ 2–3): 3–5 → 3–4 tiles — narrowing progressively.
+ * Late game (difficulty ≈ 4): 2–3 tiles (56–84 px) — tight, high stakes.
+ *
+ * t = (difficulty − 1) / 3  normalises difficulty [1, 4] → [0, 1].
+ * minTiles = round(4 − 2t)  →  4 at start, 2 at max difficulty.
+ * maxTiles = round(6 − 3t)  →  6 at start, 3 at max difficulty.
+ */
+function greyTileRange(difficulty: number): { min: number; max: number } {
+  const t = Math.max(0, Math.min(1, (difficulty - 1) / 3));
+  const minTiles = Math.max(2, Math.round(4 - 2 * t));
+  const maxTiles = Math.max(minTiles, Math.round(6 - 3 * t));
+  return { min: minTiles, max: maxTiles };
+}
+
+/**
  * Returns the pixel width for a newly spawned platform.
  *
- * - Grey: always GREY_PLATFORM_WIDTH (fixed single sprite, never tiled).
- * - Blue / Dark Blue: random whole-tile count × TILE_SIZE (never fractional).
+ * - Blue / Dark Blue: random tile count in [PLATFORM.minTiles, PLATFORM.maxTiles].
+ * - Grey: tile count drawn from a difficulty-scaled range — wide early,
+ *   narrow late — so breakable platforms stay approachable at game start and
+ *   become a tighter challenge as the player climbs.
+ *
+ * All widths are exact multiples of TILE_SIZE: no fractional tiles, no stretch.
  */
-function pickWidth(rng: Rng, kind: PlatformKind): number {
-  if (kind === 'grey') return GREY_PLATFORM_WIDTH;
-  const tiles = randInt(rng, PLATFORM.minTiles, PLATFORM.maxTiles);
-  return tiles * TILE_SIZE;
+function pickWidth(rng: Rng, kind: PlatformKind, difficulty: number): number {
+  if (kind === 'grey') {
+    const { min, max } = greyTileRange(difficulty);
+    return randInt(rng, min, max) * TILE_SIZE;
+  }
+  return randInt(rng, PLATFORM.minTiles, PLATFORM.maxTiles) * TILE_SIZE;
 }
 
 /**
@@ -86,7 +110,7 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
   const y = g.nextSpawnY - gap;
 
   const kind = pickKind(rng, g.brownCooldownRows);
-  const pw = pickWidth(rng, kind);
+  const pw = pickWidth(rng, kind, g.difficulty);
 
   // Anchor from the previously spawned platform so we can guarantee horizontal
   // reachability. Fall back to screen-center for the very first spawn.

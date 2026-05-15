@@ -114,20 +114,23 @@ export function tickGame(
     // platforms on the way up.
     if (g.player.vy < 0) continue;
 
-    if (p.kind === 'grey') {
-      if (prevFeet <= p.y + 10 && feet >= p.y - 4 && feet <= p.y + p.height + 8) {
-        p.breaking = true;
-        p.breakTimer = 0.09;
-        p.shakePhase = 0.01;
-        g.player.grounded = false;
-      }
-      continue;
-    }
-
     if (prevFeet <= p.y + 8 && feet >= p.y - 4 && feet <= p.y + p.height + 6) {
+      // Snap the player onto the platform surface and apply the jump impulse.
+      // This must happen before any break logic so grey platforms always give
+      // the player a valid bounce — the platform becomes non-solid (breaking)
+      // only AFTER the velocity is committed.
       g.player.y = p.y - g.player.h;
       g.player.vy = PHYSICS.jumpVelocity;
       g.player.grounded = true;
+
+      if (p.kind === 'grey') {
+        // Trigger the break after the jump is secured. platformSolid() will
+        // return false from the next frame onward (breaking === true), so the
+        // player can never double-land on the same grey tile.
+        p.breaking = true;
+        p.breakTimer = 0.09;
+        p.shakePhase = 0.01;
+      }
       break;
     }
   }
