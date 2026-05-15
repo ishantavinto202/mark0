@@ -31,16 +31,17 @@ export function TouchControls({
       style={[
         styles.wrap,
         {
-          paddingBottom: insets.bottom + 18,
-          paddingLeft: insets.left + 18,
-          paddingRight: insets.right + 18,
+          // Extra bottom padding keeps the buttons clear of the home indicator.
+          paddingBottom: insets.bottom + 12,
+          paddingLeft:   insets.left  + 14,
+          paddingRight:  insets.right + 14,
         },
       ]}
     >
       <Pressable
         onPressIn={onLeftDown}
         onPressOut={onLeftUp}
-        hitSlop={16}
+        hitSlop={28}
         accessibilityRole="button"
         accessibilityLabel="Move left"
         style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
@@ -50,7 +51,7 @@ export function TouchControls({
       <Pressable
         onPressIn={onRightDown}
         onPressOut={onRightUp}
-        hitSlop={16}
+        hitSlop={28}
         accessibilityRole="button"
         accessibilityLabel="Move right"
         style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
@@ -73,23 +74,23 @@ const styles = StyleSheet.create({
     zIndex: 25,
   },
   btn: {
-    width: 96,
-    height: 96,
-    borderRadius: 28,
+    width: 124,
+    height: 124,
+    borderRadius: 36,
     backgroundColor: 'rgba(12, 18, 28, 0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnPressed: {
     backgroundColor: 'rgba(62, 207, 142, 0.55)',
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.45)',
   },
   glyph: {
     color: '#fff',
-    fontSize: 40,
+    fontSize: 50,
     fontWeight: '900',
-    lineHeight: 44,
+    lineHeight: 56,
   },
 });
