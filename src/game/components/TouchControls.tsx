@@ -41,7 +41,7 @@ export function TouchControls({
       <Pressable
         onPressIn={onLeftDown}
         onPressOut={onLeftUp}
-        hitSlop={28}
+        hitSlop={56}
         accessibilityRole="button"
         accessibilityLabel="Move left"
         style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
@@ -51,7 +51,7 @@ export function TouchControls({
       <Pressable
         onPressIn={onRightDown}
         onPressOut={onRightUp}
-        hitSlop={28}
+        hitSlop={56}
         accessibilityRole="button"
         accessibilityLabel="Move right"
         style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
@@ -74,9 +74,9 @@ const styles = StyleSheet.create({
     zIndex: 25,
   },
   btn: {
-    width: 124,
-    height: 124,
-    borderRadius: 36,
+    width: 160,
+    height: 160,
+    borderRadius: 44,
     backgroundColor: 'rgba(12, 18, 28, 0.55)',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.16)',
@@ -89,8 +89,8 @@ const styles = StyleSheet.create({
   },
   glyph: {
     color: '#fff',
-    fontSize: 50,
+    fontSize: 64,
     fontWeight: '900',
-    lineHeight: 56,
+    lineHeight: 72,
   },
 });

@@ -25,9 +25,6 @@ export function GameHUD({ score, highScore, onPause }: Props) {
           <Text style={styles.pauseTxt}>‖</Text>
         </Pressable>
       </View>
-      <Text style={[styles.hint, { marginLeft: insets.left + 12 }]}>
-        Hold the on-screen buttons to move
-      </Text>
     </View>
   );
 }
@@ -61,7 +58,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   value: {
-    color: '#fff',
+    color: '#3f2cec',
     fontSize: 20,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],

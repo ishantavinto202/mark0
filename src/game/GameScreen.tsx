@@ -127,8 +127,8 @@ export function GameScreen() {
         {uiPhase === 'paused' && (
           <View style={styles.overlay}>
             <Text style={styles.title}>Paused</Text>
-            <Pressable style={styles.btn} onPress={startOrResume}>
-              <Text style={styles.btnTxt}>Resume</Text>
+            <Pressable style={[styles.btn, { backgroundColor: '#3f2cec' }]} onPress={startOrResume}>
+              <Text style={[styles.btnTxt, { color: '#ffffff' }]}>Resume</Text>
             </Pressable>
             <Pressable style={styles.btnSecondary} onPress={restart}>
               <Text style={styles.btnTxtDark}>Restart</Text>
@@ -138,10 +138,10 @@ export function GameScreen() {
 
         {uiPhase === 'gameover' && (
           <View style={styles.overlay}>
-            <Text style={styles.title}>Run over</Text>
-            <Text style={styles.scoreBig}>{g?.score ?? 0}</Text>
-            <Pressable style={styles.btn} onPress={restart}>
-              <Text style={styles.btnTxt}>Play again</Text>
+            <Text style={[styles.title, { color: '#ffffff' }]}>Run over</Text>
+            <Text style={[styles.scoreBig, { color: '#ffffff' }]}>{g?.score ?? 0}</Text>
+            <Pressable style={[styles.btn, { backgroundColor: '#3f2cec' }]} onPress={restart}>
+              <Text style={[styles.btnTxt, { color: '#ffffff' }]}>Play again</Text>
             </Pressable>
             <Pressable
               style={styles.btnSecondary}
