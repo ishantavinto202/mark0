@@ -90,6 +90,60 @@ function pickWidth(rng: Rng, kind: PlatformKind, difficulty: number): number {
 }
 
 /**
+ * Picks a center-X position biased toward the left and right thirds of the
+ * screen, reducing density in the center third.
+ *
+ * The available window [minC, maxC] is split into three zones: left (< w/3),
+ * center (w/3..2w/3), and right (> 2w/3). Each zone is weighted by its length,
+ * but the center zone's length is multiplied by CENTER_WEIGHT (< 1) so it is
+ * chosen far less often than an even split would produce.
+ *
+ * This forces players to move horizontally from the very start of a run
+ * rather than auto-bouncing straight up through stacked center platforms.
+ */
+const CENTER_WEIGHT = 0.25;
+
+function biasedAwayFromCenter(
+  rng: Rng,
+  minC: number,
+  maxC: number,
+  w: number,
+): number {
+  const leftBoundary = w / 3;
+  const rightBoundary = (2 * w) / 3;
+
+  const leftMin = minC;
+  const leftMax = Math.min(maxC, leftBoundary);
+  const centerMin = Math.max(minC, leftBoundary);
+  const centerMax = Math.min(maxC, rightBoundary);
+  const rightMin = Math.max(minC, rightBoundary);
+  const rightMax = maxC;
+
+  const leftLen = Math.max(0, leftMax - leftMin);
+  const centerLen = Math.max(0, centerMax - centerMin);
+  const rightLen = Math.max(0, rightMax - rightMin);
+
+  const wLeft = leftLen;
+  const wCenter = centerLen * CENTER_WEIGHT;
+  const wRight = rightLen;
+  const total = wLeft + wCenter + wRight;
+
+  if (total <= 0) return randRange(rng, minC, maxC);
+
+  const r = rng() * total;
+  if (r < wLeft && leftLen > 0) {
+    return randRange(rng, leftMin, leftMax);
+  }
+  if (r < wLeft + wCenter && centerLen > 0) {
+    return randRange(rng, centerMin, centerMax);
+  }
+  if (rightLen > 0) {
+    return randRange(rng, rightMin, rightMax);
+  }
+  return randRange(rng, minC, maxC);
+}
+
+/**
  * Spawn a single platform one step above the previous spawn. Vertical step is
  * always within the player's max reachable jump height (with a safety margin),
  * horizontal step from the previous platform is always within practical
@@ -165,7 +219,7 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
     maxCenter = mid;
   }
 
-  const centerX = randRange(rng, minCenter, maxCenter);
+  const centerX = biasedAwayFromCenter(rng, minCenter, maxCenter, w);
   const x = clamp(centerX - pw / 2, PLATFORM.edgeMargin, w - PLATFORM.edgeMargin - pw);
 
   const darkBlueSpeed =

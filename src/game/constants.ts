@@ -72,7 +72,7 @@ export const SPAWN = {
    */
   maxHorizontalStep: 210,
   /** Soft minimum so adjacent platforms don't fully overlap horizontally. */
-  minHorizontalStep: 24,
+  minHorizontalStep: 48,
   /**
    * Dark Blue platform difficulty ramp. Each dark blue locks its moveSpeed at
    * spawn so already-on-screen platforms stay predictable; only newly spawned

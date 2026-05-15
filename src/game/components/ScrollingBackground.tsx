@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+import { TwinklingStars } from '@/game/components/TwinklingStars';
 
 const BG1 = require('@assets/BG/BG_1.png');
 const BG2 = require('@assets/BG/BG_2.png');
@@ -87,6 +88,8 @@ export function ScrollingBackground({ cameraY, screenWidth, screenHeight }: Prop
         resizeMode="stretch"
         fadeDuration={0}
       />
+      {/* Twinkling stars — fixed in screen-space above BG_2, behind BG_1 */}
+      <TwinklingStars screenWidth={screenWidth} screenHeight={screenHeight} />
       {/* BG_1 on top — slides down and exits as the player climbs */}
       {bg1Visible && (
         <Image
