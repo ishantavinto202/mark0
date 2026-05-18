@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { getPlatformWorldX } from '@/game/systems/gameTick';
 import type { GameModel } from '@/game/types';
-import { VoxelObstacle } from '@/game/components/VoxelObstacle';
+import { VoxelEnemy } from '@/game/components/VoxelEnemy';
 import { VoxelPlatform } from '@/game/components/VoxelPlatform';
 import { VoxelPlayer } from '@/game/components/VoxelPlayer';
 import { ScrollingBackground } from '@/game/components/ScrollingBackground';
@@ -11,7 +11,7 @@ type Props = {
 };
 
 export function GameCanvas({ game }: Props) {
-  const { cameraY, player, platforms, obstacles, width, height } = game;
+  const { cameraY, player, platforms, enemies, width, height } = game;
 
   return (
     <View style={styles.root} pointerEvents="box-none">
@@ -26,11 +26,15 @@ export function GameCanvas({ game }: Props) {
         if (sy > height + 80 || sy < -120) return null;
         return <VoxelPlatform key={p.id} platform={p} screenX={wx} screenY={sy} />;
       })}
-      {obstacles.map((o) => {
-        const sy = o.y - cameraY;
+      {enemies.map((e) => {
+        const plat = platforms.find((p) => p.id === e.platformId);
+        if (!plat) return null;
+        const wx = getPlatformWorldX(plat) + e.relX;
+        const wy = plat.y - e.h;
+        const sy = wy - cameraY;
         if (sy > height + 80 || sy < -120) return null;
         return (
-          <VoxelObstacle key={o.id} screenX={o.x} screenY={sy} w={o.w} h={o.h} />
+          <VoxelEnemy key={e.id} enemy={e} screenX={wx} screenY={sy} />
         );
       })}
       <VoxelPlayer

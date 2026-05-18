@@ -89,6 +89,60 @@ export const SPAWN = {
   darkBlueSpeedRampScore: 6000,
 } as const;
 
+/**
+ * Patrol enemy (Angry Voxel Face) configuration.
+ * Enemies spawn only on blue and darkBlue platforms wide enough (≥ minTiles)
+ * to guarantee a landing gap beside the enemy hitbox.
+ */
+export const ENEMY = {
+  /** Display width/height in logical pixels (square sprite). */
+  w: 26,
+  h: 26,
+  /** Patrol speed at difficulty 1 (px/s). */
+  baseSpeed: 35,
+  /** Patrol speed cap at max difficulty (px/s). */
+  maxSpeed: 72,
+  /**
+   * Minimum platform tile count for an enemy to spawn.
+   * 3 tiles = 84 pt. With a 26 pt enemy and a 42 pt player hitbox,
+   * 84 − 26 = 58 pt clearance — enough to always land safely beside it.
+   */
+  spawnMinTiles: 3,
+  /** Rows to lock out after each enemy spawn (mirrors grey cooldown pattern). */
+  cooldownRows: 3,
+  /** Spawn probability at difficulty 1. */
+  spawnChanceBase: 0.18,
+  /** Spawn probability ceiling (reached at max difficulty). */
+  spawnChanceMax: 0.40,
+  /** Idle bounce frequency in cycles per second. */
+  bounceFreq: 3.2,
+  /** Idle bounce amplitude in logical pixels (vertical). */
+  bounceAmp: 2.5,
+} as const;
+
+/**
+ * Spring booster configuration.
+ * Springs spawn only on blue and darkBlue platforms at `spawnChance` probability.
+ * The boost gives ~2.25× the normal jump height (1.5× jump velocity squared).
+ */
+export const SPRING = {
+  /** Probability a blue or darkBlue platform spawns a spring (0–1). */
+  spawnChance: 0.18,
+  /**
+   * Launch velocity applied instead of PHYSICS.jumpVelocity when the player
+   * hits a spring. −1350 vs −900 = 1.5× velocity → ~2.25× peak height.
+   */
+  boostVelocity: -1350,
+  /**
+   * Display width/height of the spring sprite in logical pixels.
+   * Sized to sit comfortably on a single 28 pt tile.
+   */
+  spriteW: 20,
+  spriteH: 32,
+  /** Duration (seconds) of the compression/release animation cycle. */
+  animDuration: 0.38,
+} as const;
+
 export const COLORS = {
   skyTop: '#6ec8ff',
   skyBottom: '#b8e8ff',

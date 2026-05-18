@@ -1,7 +1,7 @@
-import { CAMERA, PHYSICS } from '@/game/constants';
+import { CAMERA, ENEMY, PHYSICS, SPRING } from '@/game/constants';
 import { rectBottom, rectsOverlap, type Rect } from '@/game/math/collision';
 import { mulberry32 } from '@/game/math/rng';
-import { spawnObstacleIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
+import { spawnEnemyIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
 import type { ControlInput, GameModel, PlatformModel } from '@/game/types';
 
 // Pre-generate platforms this many world-px above the camera. Increased from
@@ -64,6 +64,29 @@ export function tickGame(
         p.broken = true;
       }
     }
+    // Tick down the spring compression/release animation.
+    if (p.springAnimPhase > 0) {
+      p.springAnimPhase -= dt / SPRING.animDuration;
+      if (p.springAnimPhase < 0) p.springAnimPhase = 0;
+    }
+  }
+
+  // Enemy patrol movement — each enemy walks left↔right within its platform.
+  for (const e of g.enemies) {
+    const plat = g.platforms.find((p) => p.id === e.platformId);
+    if (!plat || plat.broken) continue;
+
+    e.bouncePhase += dt * ENEMY.bounceFreq;
+    e.relX += e.dir * e.speed * dt;
+
+    const maxRelX = plat.width - e.w;
+    if (e.relX <= 0) {
+      e.relX = 0;
+      e.dir = 1;
+    } else if (e.relX >= maxRelX) {
+      e.relX = maxRelX;
+      e.dir = -1;
+    }
   }
 
   const wish = clamp(input.horizontal, -1, 1) * PHYSICS.maxRunSpeed;
@@ -123,7 +146,17 @@ export function tickGame(
       // the player a valid bounce — the platform becomes non-solid (breaking)
       // only AFTER the velocity is committed.
       g.player.y = p.y - g.player.h;
-      g.player.vy = PHYSICS.jumpVelocity;
+
+      if (p.hasSpring && p.springAnimPhase === 0) {
+        // Spring boost: only triggers when the spring is at rest (animPhase 0)
+        // to prevent re-firing on the same landing event. Once vy goes negative
+        // the player leaves the spring; next contact resets normally.
+        g.player.vy = SPRING.boostVelocity;
+        p.springAnimPhase = 1.0;
+      } else {
+        g.player.vy = PHYSICS.jumpVelocity;
+      }
+
       g.player.grounded = true;
 
       if (p.kind === 'grey') {
@@ -138,15 +171,20 @@ export function tickGame(
     }
   }
 
-  const playerRectAfter: Rect = {
+  // Enemy collision — check after movement is settled so position is accurate.
+  const playerRectAfterMove: Rect = {
     x: g.player.x,
     y: g.player.y,
     w: g.player.w,
     h: g.player.h,
   };
-
-  for (const o of g.obstacles) {
-    if (rectsOverlap(playerRectAfter, o)) {
+  for (const e of g.enemies) {
+    const plat = g.platforms.find((p) => p.id === e.platformId);
+    if (!plat) continue;
+    const ex = getPlatformWorldX(plat) + e.relX;
+    const ey = plat.y - e.h;
+    const enemyRect: Rect = { x: ex, y: ey, w: e.w, h: e.h };
+    if (rectsOverlap(playerRectAfterMove, enemyRect)) {
       g.phase = 'gameover';
       return;
     }
@@ -166,11 +204,13 @@ export function tickGame(
     const minY = Math.min(...g.platforms.map((p) => p.y), g.nextSpawnY);
     if (minY <= g.cameraY - SPAWN_AHEAD) break;
     spawnPlatformRow(g, rng);
-    spawnObstacleIfNeeded(g, rng);
+    spawnEnemyIfNeeded(g, rng);
   }
 
   g.platforms = g.platforms.filter((p) => p.y < g.cameraY + g.height + PRUNE_BELOW);
-  g.obstacles = g.obstacles.filter((o) => o.y < g.cameraY + g.height + PRUNE_BELOW);
+  // Prune enemies whose parent platform has been pruned.
+  const platformIds = new Set(g.platforms.map((p) => p.id));
+  g.enemies = g.enemies.filter((e) => platformIds.has(e.platformId));
 
   g.score = Math.max(
     g.score,

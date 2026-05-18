@@ -27,6 +27,8 @@ function starterPlatform(y: number, w: number, x: number): PlatformModel {
     breakTimer: 0,
     breaking: false,
     shakePhase: 0,
+    hasSpring: false,
+    springAnimPhase: 0,
   };
 }
 
@@ -62,6 +64,7 @@ export function createInitialGame(width: number, height: number): GameModel {
     },
     platforms,
     obstacles: [],
+    enemies: [],
     cameraY: Math.max(0, playerY - height * CAMERA.followRatio),
     score: 0,
     bestHeight: 0,
@@ -70,6 +73,7 @@ export function createInitialGame(width: number, height: number): GameModel {
     nextSpawnY: startPlatformY,
     brownCooldownRows: SPAWN_INITIAL_BROWN_COOLDOWN,
     lastSpawnWasBrown: false,
+    enemyCooldownRows: 0,
     idCounter: 100,
     runStartPlayerY: playerY,
   };

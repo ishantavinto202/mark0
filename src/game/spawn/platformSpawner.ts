@@ -1,4 +1,4 @@
-import { PLATFORM, PLATFORM_WEIGHTS, SPAWN, TILE_SIZE } from '@/game/constants';
+import { ENEMY, PLATFORM, PLATFORM_WEIGHTS, SPAWN, SPRING, TILE_SIZE } from '@/game/constants';
 import { JUMP_REACH } from '@/game/math/jumpReach';
 import { mulberry32, randInt, randRange } from '@/game/math/rng';
 import type { GameModel, PlatformKind, PlatformModel } from '@/game/types';
@@ -227,6 +227,10 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
       ? PLATFORM.darkBlueMoveSpeed * darkBlueSpeedMultiplier(g.score)
       : 0;
 
+  // Springs only appear on blue and darkBlue platforms — not on breakable grey.
+  const canHaveSpring = kind === 'blue' || kind === 'darkBlue';
+  const hasSpring = canHaveSpring && rng() < SPRING.spawnChance;
+
   g.platforms.push({
     id: nextId(g),
     y,
@@ -241,6 +245,8 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
     breakTimer: 0,
     breaking: false,
     shakePhase: 0,
+    hasSpring,
+    springAnimPhase: 0,
   });
 
   g.lastSpawnWasBrown = kind === 'grey';
@@ -257,7 +263,9 @@ export function spawnObstacleIfNeeded(g: GameModel, rng: Rng): void {
   if (g.obstacles.length > 6) return;
   if (rng() > 0.01 * g.difficulty) return;
   const plat = g.platforms[g.platforms.length - 1];
-  if (!plat || plat.kind === 'grey') return;
+  // Skip grey (breakable) and spring platforms — obstacle above a spring would
+  // punish players who are boosted unexpectedly.
+  if (!plat || plat.kind === 'grey' || plat.hasSpring) return;
   const ox = plat.baseX + plat.width / 2 - 16;
   const oy = plat.y - 44;
   g.obstacles.push({
@@ -267,4 +275,61 @@ export function spawnObstacleIfNeeded(g: GameModel, rng: Rng): void {
     w: 32,
     h: 48,
   });
+}
+
+/**
+ * Possibly spawns an Angry Voxel Face enemy on the most recently placed platform.
+ *
+ * Guards (all must pass):
+ *   - Cooldown counter at zero (prevents back-to-back enemy platforms)
+ *   - Platform is blue or darkBlue (not grey/breakable)
+ *   - Platform has no spring (spring + enemy = unfair death on boost)
+ *   - Platform is wide enough (≥ ENEMY.spawnMinTiles) so a landing gap exists
+ *   - Random roll passes the difficulty-scaled probability
+ *
+ * The enemy's relX is stored relative to the platform's baseX so it naturally
+ * follows darkBlue platforms as they oscillate.  Patrol speed is locked at
+ * spawn from the difficulty-scaled range so already-on-screen enemies stay
+ * predictable for the player.
+ */
+export function spawnEnemyIfNeeded(g: GameModel, rng: Rng): void {
+  if (g.enemyCooldownRows > 0) {
+    g.enemyCooldownRows -= 1;
+    return;
+  }
+
+  const plat = g.platforms[g.platforms.length - 1];
+  if (!plat) return;
+  if (plat.kind === 'grey') return;
+  if (plat.hasSpring) return;
+
+  const tileCount = Math.round(plat.width / TILE_SIZE);
+  if (tileCount < ENEMY.spawnMinTiles) return;
+
+  // Difficulty-scaled probability: base → max linearly over difficulty [1, 4].
+  const t = clamp((g.difficulty - 1) / 3, 0, 1);
+  const spawnChance = ENEMY.spawnChanceBase + t * (ENEMY.spawnChanceMax - ENEMY.spawnChanceBase);
+  if (rng() > spawnChance) return;
+
+  // Patrol speed scales with difficulty, locked in at spawn.
+  const speed = ENEMY.baseSpeed + t * (ENEMY.maxSpeed - ENEMY.baseSpeed);
+
+  // Start the enemy somewhere in the middle third of the platform to avoid
+  // spawning right at an edge (which would immediately reverse direction).
+  const maxRelX = plat.width - ENEMY.w;
+  const startRelX = randRange(rng, maxRelX * 0.2, maxRelX * 0.8);
+  const startDir: 1 | -1 = rng() < 0.5 ? 1 : -1;
+
+  g.enemies.push({
+    id: `e_${g.idCounter++}`,
+    platformId: plat.id,
+    relX: startRelX,
+    w: ENEMY.w,
+    h: ENEMY.h,
+    speed,
+    dir: startDir,
+    bouncePhase: randRange(rng, 0, Math.PI * 2),
+  });
+
+  g.enemyCooldownRows = ENEMY.cooldownRows;
 }

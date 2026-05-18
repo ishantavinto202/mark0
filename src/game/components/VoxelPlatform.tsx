@@ -1,6 +1,7 @@
 import { TILE_SIZE } from '@/game/constants';
 import type { PlatformKind, PlatformModel } from '@/game/types';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
+import { VoxelSpring } from '@/game/components/VoxelSpring';
 
 /**
  * Sprites for all platform tile types (84 × 84 px native = 28 × 28 pt at 3×).
@@ -31,7 +32,7 @@ type Props = {
  *   - `broken`: fully invisible so collision and visuals stay in sync.
  */
 export function VoxelPlatform({ platform, screenX, screenY }: Props) {
-  const { width, kind, breaking, broken, shakePhase } = platform;
+  const { width, kind, breaking, broken, shakePhase, hasSpring, springAnimPhase } = platform;
   const shake = breaking && !broken ? Math.sin(shakePhase) * 3.5 : 0;
   const opacity = broken ? 0 : breaking ? 0.85 : 1;
 
@@ -39,28 +40,38 @@ export function VoxelPlatform({ platform, screenX, screenY }: Props) {
   const tileSprite = TILE_SPRITES[kind];
 
   return (
-    <View
-      style={[
-        styles.abs,
-        {
-          left: screenX + shake,
-          top: screenY,
-          width: tileCount * TILE_SIZE,
-          height: TILE_SIZE,
-          opacity,
-        },
-      ]}
-    >
-      {Array.from({ length: tileCount }, (_, i) => (
-        <Image
-          key={i}
-          source={tileSprite}
-          style={[styles.tile, { left: i * TILE_SIZE }]}
-          resizeMode="stretch"
-          fadeDuration={0}
+    <>
+      {hasSpring && !broken && (
+        <VoxelSpring
+          platformScreenX={screenX + shake}
+          platformScreenY={screenY}
+          platformWidth={tileCount * TILE_SIZE}
+          animPhase={springAnimPhase}
         />
-      ))}
-    </View>
+      )}
+      <View
+        style={[
+          styles.abs,
+          {
+            left: screenX + shake,
+            top: screenY,
+            width: tileCount * TILE_SIZE,
+            height: TILE_SIZE,
+            opacity,
+          },
+        ]}
+      >
+        {Array.from({ length: tileCount }, (_, i) => (
+          <Image
+            key={i}
+            source={tileSprite}
+            style={[styles.tile, { left: i * TILE_SIZE }]}
+            resizeMode="stretch"
+            fadeDuration={0}
+          />
+        ))}
+      </View>
+    </>
   );
 }
 
