@@ -91,33 +91,32 @@ export const SPAWN = {
 
 /**
  * Patrol enemy (Angry Voxel Face) configuration.
- * Enemies spawn only on blue and darkBlue platforms wide enough (≥ minTiles)
- * to guarantee a landing gap beside the enemy hitbox.
+ * Enemies spawn beside blue/darkBlue platforms (left or right), not on top,
+ * so the full platform surface stays landable.
  */
 export const ENEMY = {
-  /** Display width/height in logical pixels (square sprite). */
-  w: 26,
-  h: 26,
-  /** Patrol speed at difficulty 1 (px/s). */
-  baseSpeed: 35,
+  /** Display width/height in logical pixels (square sprite, 2× former 26 pt). */
+  w: 52,
+  h: 52,
+  /** Horizontal gap between enemy hitbox and platform edge. */
+  sideGap: 6,
+  /** How far the enemy patrols along its side (logical px). */
+  sidePatrolRange: 22,
+  /** Patrol speed at difficulty 1 (px/s) — tuned for 52 pt hitbox. */
+  baseSpeed: 34,
   /** Patrol speed cap at max difficulty (px/s). */
-  maxSpeed: 72,
+  maxSpeed: 66,
   /**
-   * Minimum platform tile count for an enemy to spawn.
-   * 3 tiles = 84 pt. With a 26 pt enemy and a 42 pt player hitbox,
-   * 84 − 26 = 58 pt clearance — enough to always land safely beside it.
+   * Minimum platform tile count — enemy is off-platform so 2 tiles is enough
+   * for a full safe landing surface.
    */
-  spawnMinTiles: 3,
+  spawnMinTiles: 2,
   /** Rows to lock out after each enemy spawn (mirrors grey cooldown pattern). */
   cooldownRows: 3,
   /** Spawn probability at difficulty 1. */
   spawnChanceBase: 0.18,
   /** Spawn probability ceiling (reached at max difficulty). */
   spawnChanceMax: 0.40,
-  /** Idle bounce frequency in cycles per second. */
-  bounceFreq: 3.2,
-  /** Idle bounce amplitude in logical pixels (vertical). */
-  bounceAmp: 2.5,
 } as const;
 
 /**

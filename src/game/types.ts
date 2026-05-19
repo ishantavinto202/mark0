@@ -36,25 +36,30 @@ export type ObstacleModel = {
   h: number;
 };
 
+/** Which side of the parent platform the enemy patrols beside. */
+export type EnemySide = 'left' | 'right';
+
 /**
- * Patrol enemy that walks left↔right across a platform surface.
- * Position is stored relative to the platform's baseX so the enemy
- * naturally follows darkBlue platforms as they oscillate.
+ * Patrol enemy beside a platform (not on its surface).
+ * Position is relative to the platform's baseX / top-y so it follows
+ * darkBlue oscillation via getPlatformWorldX at render/collision time.
  */
 export type EnemyModel = {
   id: string;
-  /** ID of the parent platform this enemy patrols. */
+  /** ID of the parent platform this enemy is anchored to. */
   platformId: string;
-  /** X offset from the platform's baseX (not the animated worldX). */
+  /** X offset from the platform's baseX. */
   relX: number;
+  /** Y offset from the platform's top edge (negative = higher). */
+  relY: number;
   w: number;
   h: number;
+  /** Side of the platform the enemy patrols along. */
+  side: EnemySide;
   /** Patrol speed in logical px/s (locked at spawn, scales with difficulty). */
   speed: number;
   /** Current movement direction: 1 = right, -1 = left. */
   dir: 1 | -1;
-  /** Accumulates over time to drive the idle bounce animation. */
-  bouncePhase: number;
 };
 
 export type PlayerModel = {

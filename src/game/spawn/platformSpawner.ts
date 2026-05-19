@@ -1,7 +1,7 @@
 import { ENEMY, PLATFORM, PLATFORM_WEIGHTS, SPAWN, SPRING, TILE_SIZE } from '@/game/constants';
 import { JUMP_REACH } from '@/game/math/jumpReach';
 import { mulberry32, randInt, randRange } from '@/game/math/rng';
-import type { GameModel, PlatformKind, PlatformModel } from '@/game/types';
+import type { EnemySide, GameModel, PlatformKind, PlatformModel } from '@/game/types';
 
 type Rng = ReturnType<typeof mulberry32>;
 
@@ -278,19 +278,10 @@ export function spawnObstacleIfNeeded(g: GameModel, rng: Rng): void {
 }
 
 /**
- * Possibly spawns an Angry Voxel Face enemy on the most recently placed platform.
+ * Possibly spawns an Angry Voxel Face beside the most recently placed platform.
  *
- * Guards (all must pass):
- *   - Cooldown counter at zero (prevents back-to-back enemy platforms)
- *   - Platform is blue or darkBlue (not grey/breakable)
- *   - Platform has no spring (spring + enemy = unfair death on boost)
- *   - Platform is wide enough (≥ ENEMY.spawnMinTiles) so a landing gap exists
- *   - Random roll passes the difficulty-scaled probability
- *
- * The enemy's relX is stored relative to the platform's baseX so it naturally
- * follows darkBlue platforms as they oscillate.  Patrol speed is locked at
- * spawn from the difficulty-scaled range so already-on-screen enemies stay
- * predictable for the player.
+ * The enemy patrols horizontally just outside the left or right edge.
+ * The platform surface stays fully landable.
  */
 export function spawnEnemyIfNeeded(g: GameModel, rng: Rng): void {
   if (g.enemyCooldownRows > 0) {
@@ -306,29 +297,51 @@ export function spawnEnemyIfNeeded(g: GameModel, rng: Rng): void {
   const tileCount = Math.round(plat.width / TILE_SIZE);
   if (tileCount < ENEMY.spawnMinTiles) return;
 
-  // Difficulty-scaled probability: base → max linearly over difficulty [1, 4].
   const t = clamp((g.difficulty - 1) / 3, 0, 1);
   const spawnChance = ENEMY.spawnChanceBase + t * (ENEMY.spawnChanceMax - ENEMY.spawnChanceBase);
   if (rng() > spawnChance) return;
 
-  // Patrol speed scales with difficulty, locked in at spawn.
+  const wobble = plat.kind === 'darkBlue' ? plat.moveRange : 0;
+  const platWorldMin = plat.baseX - wobble;
+  const platWorldMax = plat.baseX + plat.width + wobble;
+
+  const leftPatrolMin = -ENEMY.w - ENEMY.sideGap - ENEMY.sidePatrolRange;
+  const rightPatrolMax = plat.width + ENEMY.sideGap + ENEMY.sidePatrolRange;
+
+  const canLeft = platWorldMin + leftPatrolMin >= PLATFORM.edgeMargin;
+  const canRight = platWorldMax + rightPatrolMax + ENEMY.w <= g.width - PLATFORM.edgeMargin;
+
+  if (!canLeft && !canRight) return;
+
+  let side: EnemySide;
+  if (canLeft && canRight) {
+    side = rng() < 0.5 ? 'left' : 'right';
+  } else {
+    side = canLeft ? 'left' : 'right';
+  }
+
   const speed = ENEMY.baseSpeed + t * (ENEMY.maxSpeed - ENEMY.baseSpeed);
 
-  // Start the enemy somewhere in the middle third of the platform to avoid
-  // spawning right at an edge (which would immediately reverse direction).
-  const maxRelX = plat.width - ENEMY.w;
-  const startRelX = randRange(rng, maxRelX * 0.2, maxRelX * 0.8);
-  const startDir: 1 | -1 = rng() < 0.5 ? 1 : -1;
+  const patrolMin =
+    side === 'left'
+      ? leftPatrolMin
+      : plat.width + ENEMY.sideGap;
+  const patrolMax =
+    side === 'left'
+      ? -ENEMY.sideGap
+      : rightPatrolMax;
 
+  // Deterministic patrol: start at the near end, move toward the far end first.
   g.enemies.push({
     id: `e_${g.idCounter++}`,
     platformId: plat.id,
-    relX: startRelX,
+    relX: patrolMin,
+    relY: -ENEMY.h + PLATFORM.height,
     w: ENEMY.w,
     h: ENEMY.h,
+    side,
     speed,
-    dir: startDir,
-    bouncePhase: randRange(rng, 0, Math.PI * 2),
+    dir: 1,
   });
 
   g.enemyCooldownRows = ENEMY.cooldownRows;

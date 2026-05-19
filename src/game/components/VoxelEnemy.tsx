@@ -1,5 +1,4 @@
 import { Image, StyleSheet, View } from 'react-native';
-import { ENEMY } from '@/game/constants';
 import type { EnemyModel } from '@/game/types';
 
 type Props = {
@@ -12,18 +11,10 @@ type Props = {
 
 /**
  * Renders the Angry Voxel Face enemy.
- *
- * Animations (all driven by model state, no local state):
- *   - Idle bounce: sinusoidal vertical offset from `bouncePhase`.
- *   - Direction flip: sprite is mirrored on the X axis when moving left.
+ * Movement is X-axis only; sprite flips to face travel direction.
  */
 export function VoxelEnemy({ enemy, screenX, screenY }: Props) {
-  const { bouncePhase, dir, w, h } = enemy;
-
-  // Vertical bob: ±ENEMY.bounceAmp pixels, smooth sine wave.
-  const bobY = Math.sin(bouncePhase) * ENEMY.bounceAmp;
-
-  // Flip sprite to face movement direction.
+  const { dir, w, h } = enemy;
   const scaleX = dir === -1 ? -1 : 1;
 
   return (
@@ -33,7 +24,7 @@ export function VoxelEnemy({ enemy, screenX, screenY }: Props) {
         styles.abs,
         {
           left: screenX,
-          top: screenY + bobY,
+          top: screenY,
           width: w,
           height: h,
         },

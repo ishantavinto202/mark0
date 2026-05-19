@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { getPlatformWorldX } from '@/game/systems/gameTick';
+import { getEnemyWorldRect, getPlatformWorldX } from '@/game/systems/gameTick';
 import type { GameModel } from '@/game/types';
 import { VoxelEnemy } from '@/game/components/VoxelEnemy';
 import { VoxelPlatform } from '@/game/components/VoxelPlatform';
@@ -29,12 +29,11 @@ export function GameCanvas({ game }: Props) {
       {enemies.map((e) => {
         const plat = platforms.find((p) => p.id === e.platformId);
         if (!plat) return null;
-        const wx = getPlatformWorldX(plat) + e.relX;
-        const wy = plat.y - e.h;
-        const sy = wy - cameraY;
+        const rect = getEnemyWorldRect(e, plat);
+        const sy = rect.y - cameraY;
         if (sy > height + 80 || sy < -120) return null;
         return (
-          <VoxelEnemy key={e.id} enemy={e} screenX={wx} screenY={sy} />
+          <VoxelEnemy key={e.id} enemy={e} screenX={rect.x} screenY={sy} />
         );
       })}
       <VoxelPlayer

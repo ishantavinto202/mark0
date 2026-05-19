@@ -1,8 +1,8 @@
-import { CAMERA, ENEMY, PHYSICS, SPRING } from '@/game/constants';
+import { CAMERA, ENEMY, PHYSICS, PLATFORM, SPRING } from '@/game/constants';
 import { rectBottom, rectsOverlap, type Rect } from '@/game/math/collision';
 import { mulberry32 } from '@/game/math/rng';
 import { spawnEnemyIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
-import type { ControlInput, GameModel, PlatformModel } from '@/game/types';
+import type { ControlInput, EnemyModel, GameModel, PlatformModel } from '@/game/types';
 
 // Pre-generate platforms this many world-px above the camera. Increased from
 // 480 to match the higher platform density (smaller gaps → more platforms fit
@@ -21,6 +21,53 @@ export function getPlatformWorldX(p: PlatformModel): number {
     return p.baseX + Math.sin(p.movePhase) * p.moveRange;
   }
   return p.baseX;
+}
+
+/** Fixed vertical offset — enemy hovers beside the platform top edge (no Y motion). */
+export function getEnemyBaseRelY(): number {
+  return -ENEMY.h + PLATFORM.height;
+}
+
+export function getEnemyPatrolBounds(
+  e: EnemyModel,
+  plat: PlatformModel,
+): { min: number; max: number } {
+  if (e.side === 'left') {
+    return {
+      min: -e.w - ENEMY.sideGap - ENEMY.sidePatrolRange,
+      max: -ENEMY.sideGap,
+    };
+  }
+  return {
+    min: plat.width + ENEMY.sideGap,
+    max: plat.width + ENEMY.sideGap + ENEMY.sidePatrolRange,
+  };
+}
+
+export function getEnemyWorldRect(e: EnemyModel, plat: PlatformModel): Rect {
+  return {
+    x: getPlatformWorldX(plat) + e.relX,
+    y: plat.y + e.relY,
+    w: e.w,
+    h: e.h,
+  };
+}
+
+/** Keep relX inside patrol bounds and on-screen (X-axis only). */
+function clampEnemyRelX(
+  e: EnemyModel,
+  plat: PlatformModel,
+  screenW: number,
+): void {
+  const { min, max } = getEnemyPatrolBounds(e, plat);
+  e.relX = clamp(e.relX, min, max);
+
+  const platX = getPlatformWorldX(plat);
+  const screenMin = PLATFORM.edgeMargin;
+  const screenMax = screenW - PLATFORM.edgeMargin - e.w;
+  const minFromScreen = screenMin - platX;
+  const maxFromScreen = screenMax - platX;
+  e.relX = clamp(e.relX, Math.max(min, minFromScreen), Math.min(max, maxFromScreen));
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -71,22 +118,23 @@ export function tickGame(
     }
   }
 
-  // Enemy patrol movement — each enemy walks left↔right within its platform.
+  // Enemy patrol — constant horizontal speed, reverse at patrol/screen bounds.
   for (const e of g.enemies) {
     const plat = g.platforms.find((p) => p.id === e.platformId);
     if (!plat || plat.broken) continue;
 
-    e.bouncePhase += dt * ENEMY.bounceFreq;
     e.relX += e.dir * e.speed * dt;
 
-    const maxRelX = plat.width - e.w;
-    if (e.relX <= 0) {
-      e.relX = 0;
+    const { min, max } = getEnemyPatrolBounds(e, plat);
+    if (e.relX <= min) {
+      e.relX = min;
       e.dir = 1;
-    } else if (e.relX >= maxRelX) {
-      e.relX = maxRelX;
+    } else if (e.relX >= max) {
+      e.relX = max;
       e.dir = -1;
     }
+
+    clampEnemyRelX(e, plat, g.width);
   }
 
   const wish = clamp(input.horizontal, -1, 1) * PHYSICS.maxRunSpeed;
@@ -181,10 +229,7 @@ export function tickGame(
   for (const e of g.enemies) {
     const plat = g.platforms.find((p) => p.id === e.platformId);
     if (!plat) continue;
-    const ex = getPlatformWorldX(plat) + e.relX;
-    const ey = plat.y - e.h;
-    const enemyRect: Rect = { x: ex, y: ey, w: e.w, h: e.h };
-    if (rectsOverlap(playerRectAfterMove, enemyRect)) {
+    if (rectsOverlap(playerRectAfterMove, getEnemyWorldRect(e, plat))) {
       g.phase = 'gameover';
       return;
     }
