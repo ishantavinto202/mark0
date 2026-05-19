@@ -1,4 +1,4 @@
-import { CAMERA, ENEMY, PHYSICS, PLATFORM, SPRING } from '@/game/constants';
+import { CAMERA, COLLISION_VIEW, ENEMY, PHYSICS, PLATFORM, SPRING } from '@/game/constants';
 import { rectBottom, rectsOverlap, type Rect } from '@/game/math/collision';
 import { mulberry32 } from '@/game/math/rng';
 import { spawnEnemyIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
@@ -89,6 +89,22 @@ function platformSolid(p: PlatformModel): boolean {
   return true;
 }
 
+/**
+ * True when the platform intersects the visible vertical band (screen space).
+ * Off-screen platforms — especially below the bottom edge — do not collide.
+ */
+export function platformCollisionActive(
+  p: PlatformModel,
+  cameraY: number,
+  screenH: number,
+): boolean {
+  const screenTop = p.y - cameraY;
+  const screenBottom = screenTop + p.height;
+  if (screenBottom < -COLLISION_VIEW.marginAbove) return false;
+  if (screenTop > screenH + COLLISION_VIEW.marginBelow) return false;
+  return true;
+}
+
 export function tickGame(
   g: GameModel,
   dt: number,
@@ -165,10 +181,15 @@ export function tickGame(
 
   g.player.grounded = false;
 
-  const sorted = [...g.platforms].sort((a, b) => b.y - a.y);
+  const sorted = g.platforms
+    .filter(
+      (p) =>
+        platformSolid(p) &&
+        platformCollisionActive(p, g.cameraY, g.height),
+    )
+    .sort((a, b) => b.y - a.y);
 
   for (const p of sorted) {
-    if (!platformSolid(p)) continue;
     const platX = getPlatformWorldX(p);
     const platRect: Rect = {
       x: platX,

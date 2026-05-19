@@ -26,6 +26,17 @@ export const CAMERA = {
   lerp: 0.14,
 } as const;
 
+/**
+ * Vertical viewport band for platform landing collision (screen space).
+ * Matches GameCanvas render cull margins so collision aligns with visibility.
+ */
+export const COLLISION_VIEW = {
+  /** Platforms up to this far above the screen top can still be landed on. */
+  marginAbove: 120,
+  /** Platforms whose top is below the screen bottom + this margin are non-solid. */
+  marginBelow: 0,
+} as const;
+
 export const PLAYER_SIZE = { w: 42, h: 54 } as const;
 
 export const PLATFORM = {
