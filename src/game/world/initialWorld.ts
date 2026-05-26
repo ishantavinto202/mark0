@@ -29,6 +29,7 @@ function starterPlatform(y: number, w: number, x: number): PlatformModel {
     shakePhase: 0,
     hasSpring: false,
     springAnimPhase: 0,
+    landingScored: false,
   };
 }
 
@@ -67,7 +68,8 @@ export function createInitialGame(width: number, height: number): GameModel {
     enemies: [],
     cameraY: Math.max(0, playerY - height * CAMERA.followRatio),
     score: 0,
-    bestHeight: 0,
+    springChainActive: false,
+    springSourcePlatformId: null,
     difficulty: 1,
     rngSeed,
     nextSpawnY: startPlatformY,
@@ -75,7 +77,6 @@ export function createInitialGame(width: number, height: number): GameModel {
     lastSpawnWasBrown: false,
     enemyCooldownRows: 0,
     idCounter: 100,
-    runStartPlayerY: playerY,
   };
 
   const rng = mulberry32(rngSeed);

@@ -247,6 +247,7 @@ export function spawnPlatformRow(g: GameModel, rng: Rng): void {
     shakePhase: 0,
     hasSpring,
     springAnimPhase: 0,
+    landingScored: false,
   });
 
   g.lastSpawnWasBrown = kind === 'grey';

@@ -130,6 +130,13 @@ export const ENEMY = {
   spawnChanceMax: 0.40,
 } as const;
 
+/** Platform landing score — only applied on confirmed landings. */
+export const SCORING = {
+  platformLanding: 100,
+  /** One-time bonus when landing on a different platform after a spring boost. */
+  springChainBonus: 500,
+} as const;
+
 /**
  * Spring booster configuration.
  * Springs spawn only on blue and darkBlue platforms at `spawnChance` probability.

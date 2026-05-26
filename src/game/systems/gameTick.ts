@@ -1,4 +1,12 @@
-import { CAMERA, COLLISION_VIEW, ENEMY, PHYSICS, PLATFORM, SPRING } from '@/game/constants';
+import {
+  CAMERA,
+  COLLISION_VIEW,
+  ENEMY,
+  PHYSICS,
+  PLATFORM,
+  SCORING,
+  SPRING,
+} from '@/game/constants';
 import { rectBottom, rectsOverlap, type Rect } from '@/game/math/collision';
 import { mulberry32 } from '@/game/math/rng';
 import { spawnEnemyIfNeeded, spawnPlatformRow } from '@/game/spawn/platformSpawner';
@@ -87,6 +95,41 @@ function platformSolid(p: PlatformModel): boolean {
   if (p.broken) return false;
   if (p.kind === 'grey' && p.breaking) return false;
   return true;
+}
+
+/** Resets score and per-platform landing flags for a new run. */
+export function resetRunScoring(g: GameModel): void {
+  g.score = 0;
+  g.springChainActive = false;
+  g.springSourcePlatformId = null;
+  for (const p of g.platforms) {
+    p.landingScored = false;
+  }
+}
+
+/** Awards points only on a confirmed platform landing (once per platform). */
+function awardLandingScore(
+  g: GameModel,
+  p: PlatformModel,
+  springTriggered: boolean,
+): void {
+  if (p.landingScored) return;
+
+  p.landingScored = true;
+  g.score += SCORING.platformLanding;
+
+  if (springTriggered) {
+    g.springChainActive = true;
+    g.springSourcePlatformId = p.id;
+  } else if (
+    g.springChainActive &&
+    g.springSourcePlatformId !== null &&
+    p.id !== g.springSourcePlatformId
+  ) {
+    g.score += SCORING.springChainBonus;
+    g.springChainActive = false;
+    g.springSourcePlatformId = null;
+  }
 }
 
 /**
@@ -210,13 +253,15 @@ export function tickGame(
     if (g.player.vy < 0) continue;
 
     if (prevFeet <= p.y + 8 && feet >= p.y - 4 && feet <= p.y + p.height + 6) {
+      const springTriggered = p.hasSpring && p.springAnimPhase === 0;
+
       // Snap the player onto the platform surface and apply the jump impulse.
       // This must happen before any break logic so grey platforms always give
       // the player a valid bounce — the platform becomes non-solid (breaking)
       // only AFTER the velocity is committed.
       g.player.y = p.y - g.player.h;
 
-      if (p.hasSpring && p.springAnimPhase === 0) {
+      if (springTriggered) {
         // Spring boost: only triggers when the spring is at rest (animPhase 0)
         // to prevent re-firing on the same landing event. Once vy goes negative
         // the player leaves the spring; next contact resets normally.
@@ -227,6 +272,7 @@ export function tickGame(
       }
 
       g.player.grounded = true;
+      awardLandingScore(g, p, springTriggered);
 
       if (p.kind === 'grey') {
         // Trigger the break after the jump is secured. platformSolid() will
@@ -278,10 +324,6 @@ export function tickGame(
   const platformIds = new Set(g.platforms.map((p) => p.id));
   g.enemies = g.enemies.filter((e) => platformIds.has(e.platformId));
 
-  g.score = Math.max(
-    g.score,
-    Math.floor(Math.max(0, g.runStartPlayerY - g.player.y) / 8),
-  );
   g.difficulty = 1 + Math.min(3, g.score / 2500);
 
   // Game over once the player's top edge has fallen past the bottom of the

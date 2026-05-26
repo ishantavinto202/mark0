@@ -26,6 +26,8 @@ export type PlatformModel = {
    * 0 = idle (full height), >0 = animating (compress then release).
    */
   springAnimPhase: number;
+  /** True after this platform has awarded its one-time landing score. */
+  landingScored: boolean;
 };
 
 export type ObstacleModel = {
@@ -84,8 +86,12 @@ export type GameModel = {
   obstacles: ObstacleModel[];
   enemies: EnemyModel[];
   cameraY: number;
+  /** Event-driven score from platform landings and spring chains. */
   score: number;
-  bestHeight: number;
+  /** True after a spring boost until the player lands on a different platform. */
+  springChainActive: boolean;
+  /** Platform id where the active spring chain started. */
+  springSourcePlatformId: string | null;
   difficulty: number;
   rngSeed: number;
   /** Spawner: minimum world-y of last spawned row (smaller = higher). */
@@ -99,8 +105,6 @@ export type GameModel = {
    */
   enemyCooldownRows: number;
   idCounter: number;
-  /** Player y at run start — used for score delta. */
-  runStartPlayerY: number;
 };
 
 export type ControlInput = {

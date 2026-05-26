@@ -5,6 +5,7 @@ import { useGameControls } from '@/game/controls/useGameControls';
 import { useGameLoop } from '@/game/hooks/useGameLoop';
 import { loadHighScore, saveHighScore } from '@/game/storage/highScore';
 import type { GameModel } from '@/game/types';
+import { resetRunScoring } from '@/game/systems/gameTick';
 import { createInitialGame } from '@/game/world/initialWorld';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
@@ -69,7 +70,7 @@ export function GameScreen() {
     const g = gameRef.current;
     if (!g) return;
     if (uiPhase === 'ready') {
-      g.runStartPlayerY = g.player.y;
+      resetRunScoring(g);
       savedGameOver.current = false;
     }
     g.phase = 'playing';
@@ -91,7 +92,6 @@ export function GameScreen() {
     savedGameOver.current = false;
     gameRef.current = createInitialGame(w, h);
     gameRef.current.phase = 'playing';
-    gameRef.current.runStartPlayerY = gameRef.current.player.y;
     setUiPhase('playing');
     setFrame((n) => n + 1);
   }, [dims]);
