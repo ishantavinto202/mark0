@@ -5,10 +5,11 @@ import { TwinklingStars } from '@/game/components/TwinklingStars';
 const BG1 = require('@assets/BG/BG_1.png');
 const BG2 = require('@assets/BG/BG_2.png');
 
-/** Native image dimensions — used only to compute the display aspect ratio. */
-const IMG_W = 1206;
-const IMG_H = 7528;
-const IMG_ASPECT = IMG_H / IMG_W; // ≈ 6.243
+/** Native dimensions from bundled assets — keeps aspect correct when art is swapped. */
+const BG1_ASPECT =
+  Image.resolveAssetSource(BG1).height / Image.resolveAssetSource(BG1).width;
+const BG2_ASPECT =
+  Image.resolveAssetSource(BG2).height / Image.resolveAssetSource(BG2).width;
 
 type Props = {
   cameraY: number;
@@ -54,37 +55,39 @@ export function ScrollingBackground({ cameraY, screenWidth, screenHeight }: Prop
   if (screenWidth <= 0) return null;
 
   const initialCameraY = initialCameraYRef.current ?? cameraY;
-  const bgH = screenWidth * IMG_ASPECT;
+  const bg1H = screenWidth * BG1_ASPECT;
+  const bg2H = screenWidth * BG2_ASPECT;
 
   // ── BG_2: seamless infinite loop ──────────────────────────────────────────
   const scrolled = Math.max(0, -cameraY);
-  const offset = scrolled % bgH;
-  const bg2ATop = offset - bgH; // upper instance — covers top of screen
+  const offset = scrolled % bg2H;
+  const bg2ATop = offset - bg2H; // upper instance — covers top of screen
   const bg2BTop = offset;       // lower instance — seam-free continuation
 
   // ── BG_1: starts bottom-aligned with screen, slides down as player climbs ─
-  // At start (cameraY = initialCameraY): bg1Top = screenHeight − bgH
+  // At start (cameraY = initialCameraY): bg1Top = screenHeight − bg1H
   //   → BG_1 bottom is exactly at the screen bottom.
   // As cameraY decreases: (initialCameraY − cameraY) grows → bg1Top rises
   //   → image moves down, revealing BG_2 from the top.
-  const bg1Top = (screenHeight - bgH) + (initialCameraY - cameraY);
-  const bg1Visible = bg1Top < screenHeight && bg1Top + bgH > 0;
+  const bg1Top = (screenHeight - bg1H) + (initialCameraY - cameraY);
+  const bg1Visible = bg1Top < screenHeight && bg1Top + bg1H > 0;
 
-  const imgStyle = { width: screenWidth, height: bgH };
+  const bg2Style = { width: screenWidth, height: bg2H };
+  const bg1Style = { width: screenWidth, height: bg1H };
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* BG_2 upper instance */}
       <Image
         source={BG2}
-        style={[styles.layer, imgStyle, { top: bg2ATop }]}
+        style={[styles.layer, bg2Style, { top: bg2ATop }]}
         resizeMode="stretch"
         fadeDuration={0}
       />
       {/* BG_2 lower instance */}
       <Image
         source={BG2}
-        style={[styles.layer, imgStyle, { top: bg2BTop }]}
+        style={[styles.layer, bg2Style, { top: bg2BTop }]}
         resizeMode="stretch"
         fadeDuration={0}
       />
@@ -94,7 +97,7 @@ export function ScrollingBackground({ cameraY, screenWidth, screenHeight }: Prop
       {bg1Visible && (
         <Image
           source={BG1}
-          style={[styles.layer, imgStyle, { top: bg1Top }]}
+          style={[styles.layer, bg1Style, { top: bg1Top }]}
           resizeMode="stretch"
           fadeDuration={0}
         />
